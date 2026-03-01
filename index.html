@@ -839,8 +839,11 @@ function spawnConfetti() {
 
 // ─── LEVEL MENU: FIX 2 ────────────────────────────────────────────────────────
 document.getElementById('lvlBtn').addEventListener('click', () => {
+    console.log('lvlBtn clicked');
     buildLvlSelect();
-    document.getElementById('lsel').classList.add('open');
+    console.log('lsel element:', document.getElementById('lsel'));
+    document.getElementById('lsel').classList.add('on');
+    console.log('lsel classList after add:', document.getElementById('lsel').classList);
 });
 
 function buildLvlSelect() {
@@ -952,7 +955,8 @@ document.getElementById('custClose').addEventListener('click',()=>{
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function isDone(s) { return s.length===CAP && s.every(c=>c===s[0]); }
 function closeAllOverlays() {
-    document.querySelectorAll('.overlay,#cust').forEach(e=>e.classList.remove('open'));
+    console.log('closeAllOverlays called');
+    document.querySelectorAll('.overlay,#cust').forEach(e=>e.classList.remove('on','open'));
     document.getElementById('win').classList.remove('open');
 }
 function toast(m) { 

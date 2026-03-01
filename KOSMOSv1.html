@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockStack – Ultimate Inversion</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg: #F8FAFC; --surface: #FFFFFF; --border: #E2E8F0;
+            --text: #0F172A; --accent: #6366F1;
+            --block-h: 38px; --tower-w: 75px; --tower-h: 220px;
+        }
+
+        body.bg-forest { background: radial-gradient(circle, #065f46 0%, #064e3b 100%); --surface: rgba(255,255,255,0.15); --border: rgba(255,255,255,0.3); --text: #f0fdf4; }
+        body.bg-ocean  { background: radial-gradient(circle, #075985 0%, #0c4a6e 100%); --surface: rgba(255,255,255,0.15); --border: rgba(255,255,255,0.3); --text: #f0f9ff; }
+        body.bg-sunset { background: radial-gradient(circle, #9a3412 0%, #7c2d12 100%); --surface: rgba(255,255,255,0.15); --border: rgba(255,255,255,0.3); --text: #fff7ed; }
+        body.bg-rose   { background: radial-gradient(circle, #9f1239 0%, #881337 100%); --surface: rgba(255,255,255,0.15); --border: rgba(255,255,255,0.3); --text: #fff1f2; }
+        body.cosmos    { --bg: #020617; --surface: rgba(15,23,42,0.8); --border: #1E3A5F; --text: #E2E8F0; --accent: #818CF8; }
+        body.cosmos.bg-nebula { background: radial-gradient(circle, #4338ca 0%, #020617 100%); }
+        body.cosmos.bg-void   { background: radial-gradient(circle, #111827 0%, #000000 100%); }
+        body.cosmos.bg-aurora { background: radial-gradient(circle, #065f46 0%, #020617 100%); }
+        body.cosmos.bg-mars   { background: radial-gradient(circle, #7c2d12 0%, #020617 100%); }
+
+        body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); height: 100vh; margin: 0; display: flex; flex-direction: column; overflow: hidden; transition: background 0.5s ease, color 0.3s; }
+
+        header { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; background: var(--surface); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 100; flex-shrink: 0; }
+        .logo { font-family: 'Space Mono', monospace; font-weight: 900; color: var(--accent); }
+        .stat-pill { background: rgba(0,0,0,0.1); border: 1px solid var(--border); padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+
+        #gravity-bar { display: none; justify-content: center; align-items: center; gap: 12px; padding: 10px; background: var(--surface); border-bottom: 1px solid var(--border); }
+        #gravity-bar.show { display: flex; }
+        .g-pips { display: flex; gap: 6px; }
+        .g-pip { width: 45px; height: 6px; border-radius: 3px; background: var(--border); transition: 0.4s cubic-bezier(0.4,0,0.2,1); }
+        .g-pip.active { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+        main { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; overflow: hidden; }
+        #grid { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 40px; padding: 20px; margin: auto; }
+
+        .tower {
+            width: var(--tower-w); height: var(--tower-h);
+            background: var(--surface); border: 2px solid var(--border);
+            border-radius: 18px; cursor: pointer;
+            display: flex; flex-direction: row;
+            padding: 10px 8px 10px 4px;
+            position: relative; gap: 6px;
+            transition: transform 0.8s cubic-bezier(0.68,-0.55,0.27,1.55), border-color 0.3s, box-shadow 0.3s;
+        }
+        .tower.selected { border-color: var(--accent); box-shadow: 0 0 25px var(--accent); }
+        .tower.done     { border-color: #22C55E; box-shadow: 0 0 15px rgba(34,197,94,0.3); }
+        .tower.full:not(.done):not(.selected) { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 12px rgba(239,68,68,0.2); }
+        .tower.full:not(.done):not(.selected) .tower-dot.filled { background: #EF4444; }
+
+        /* Wskaźnik pojemności — 4 kropki po lewej, zawsze symetryczne */
+        .tower-dots {
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; gap: 4px; flex-shrink: 0; width: 6px;
+        }
+        .tower-dot {
+            width: 5px; height: 5px; border-radius: 50%;
+            background: var(--border); transition: background .25s, transform .25s;
+            flex-shrink: 0;
+        }
+        .tower-dot.filled { background: var(--accent); transform: scale(1.15); }
+        .tower.full:not(.done):not(.selected) .tower-dot.filled { background: #EF4444; }
+        .tower.done .tower-dot.filled { background: #22C55E; }
+
+        .tower-inner { flex: 1; display: flex; gap: 4px; width: 100%; height: 100%; }
+        .block { width: 100%; height: var(--block-h); border-radius: 10px; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2); flex-shrink: 0; }
+
+        .particle { position: fixed; pointer-events: none; width: 6px; height: 6px; z-index: 10000; animation: p-explosion 0.6s ease-out forwards; }
+        @keyframes p-explosion { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; } }
+
+        /* ── CUSTOMIZER ── */
+        #cust {
+            position: fixed; bottom: 0; width: 100%;
+            background: var(--surface); border-top: 1px solid var(--border);
+            padding: 24px 24px 32px; transform: translateY(100%);
+            transition: 0.5s ease; z-index: 500; border-radius: 25px 25px 0 0;
+            backdrop-filter: blur(10px);
+        }
+        #cust.open { transform: translateY(0); }
+        .cust-section { margin-bottom: 18px; }
+        .cust-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text); opacity: .5; margin-bottom: 10px; }
+
+        /* Swatche tła — szersze, z etykietą */
+        .theme-swatch {
+            width: 70px; height: 46px; border-radius: 10px; cursor: pointer;
+            border: 2.5px solid transparent; transition: .18s all;
+            position: relative; overflow: hidden; flex-shrink: 0;
+        }
+        .theme-swatch.on { border-color: white; box-shadow: 0 0 0 2px var(--accent); }
+        .theme-swatch:hover { transform: scale(1.06); }
+        .theme-swatch span {
+            position: absolute; bottom: 3px; left: 0; right: 0;
+            text-align: center; font-size: .55rem; font-weight: 800;
+            color: rgba(255,255,255,.95); text-shadow: 0 1px 3px rgba(0,0,0,.7);
+        }
+
+        /* Swatche palety */
+        .palette-swatch {
+            display: flex; gap: 3px; flex-wrap: wrap; width: 60px; height: 40px;
+            border-radius: 8px; overflow: hidden; cursor: pointer;
+            border: 2.5px solid transparent; transition: .18s; padding: 3px;
+            background: rgba(0,0,0,.04);
+        }
+        .palette-swatch.on { border-color: var(--accent); }
+        .palette-swatch:hover { transform: scale(1.06); }
+        .palette-swatch div { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+        /* ── LEVEL MENU ── */
+        .overlay { position: fixed; inset: 0; background: rgba(2,6,23,0.95); backdrop-filter: blur(10px); display: none; z-index: 1000; flex-direction: column; align-items: center; justify-content: flex-start; color: white; overflow-y: auto; padding: 32px 20px 40px; gap: 0; }
+        .overlay.open { display: flex; }
+
+        .lmenu-title { font-family: 'Space Mono', monospace; font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }
+        .lmenu-section { width: 100%; max-width: 400px; margin-bottom: 20px; }
+        .lmenu-section-label { font-size: .65rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #64748B; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .lmenu-section-label::after { content: ''; flex: 1; height: 1px; background: #1E293B; }
+        .lmenu-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+
+        .lvl-btn {
+            aspect-ratio: 1; border-radius: 10px; cursor: pointer;
+            background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.1);
+            color: #94A3B8; font-weight: 700; font-size: .82rem;
+            transition: .18s; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 2px;
+            position: relative;
+        }
+        .lvl-btn:hover  { background: rgba(99,102,241,.2); border-color: #6366F1; color: #fff; }
+        .lvl-btn.current { background: #6366F1; border-color: #6366F1; color: #fff; }
+        .lvl-btn.done   { border-color: #22C55E; color: #22C55E; }
+        .lvl-btn.done::after { content: '✓'; position: absolute; top: 4px; right: 6px; font-size: .55rem; color: #22C55E; }
+
+        /* ── WIN BANNER (nie fullscreen — wbudowany w grę) ── */
+        #win {
+            position: fixed; bottom: -120px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 32px); max-width: 520px;
+            background: var(--surface); border: 1.5px solid var(--border);
+            border-radius: 20px; box-shadow: 0 -4px 40px rgba(0,0,0,0.18);
+            backdrop-filter: blur(12px);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; gap: 14px;
+            z-index: 1000; transition: bottom .45s cubic-bezier(.34,1.3,.64,1);
+        }
+        #win.open { bottom: 20px; }
+        .win-left { display: flex; align-items: center; gap: 12px; }
+        .win-icon { font-size: 2rem; line-height: 1; }
+        .win-text { display: flex; flex-direction: column; gap: 1px; }
+        .win-title { font-family: 'Space Mono', monospace; font-weight: 700; font-size: .9rem; letter-spacing: 1px; color: var(--text); }
+        .win-sub { font-size: .75rem; color: var(--text); opacity: .5; }
+        .win-moves { font-family: 'Space Mono', monospace; font-size: 1.6rem; font-weight: 700; color: var(--accent); min-width: 42px; text-align: center; }
+        .win-btns { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .btn { padding: 12px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; transition: 0.2s; font-family: 'Space Grotesk', sans-serif; }
+        .btn:active { transform: scale(.93); }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-ghost { background: rgba(0,0,0,0.05); color: var(--text); border: 1px solid var(--border); }
+
+        .toast { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 12px 30px; border-radius: 40px; font-weight: 900; opacity: 0; transition: 0.4s; z-index: 2000; text-transform: uppercase; letter-spacing: 1px; pointer-events: none; }
+        .toast.on { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+
+        .cfx { position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden; }
+        .cp  { position: absolute; top: -20px; animation: cfal linear forwards; }
+        @keyframes cfal { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+    </style>
+</head>
+<body class="bg-default">
+
+<header>
+    <div class="logo">BLOCKSTACK</div>
+    <div style="display:flex; gap:12px">
+        <div class="stat-pill">MOVES: <b id="moves">0</b></div>
+        <div class="stat-pill">LEVEL: <b id="lvl-num">1</b></div>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" onclick="undoMove()">↩</button>
+        <button class="btn btn-ghost" id="lvlBtn">📋</button>
+        <button class="btn btn-ghost" id="custBtn">🎨</button>
+        <button class="btn btn-primary" onclick="init(currentLevel)">↺</button>
+    </div>
+</header>
+
+<div id="gravity-bar">
+    <div id="gArrow" style="font-weight:900; font-size:1.2rem; transition:0.8s;">↓</div>
+    <div class="g-pips" id="gPips"></div>
+</div>
+
+<main><div id="grid"></div></main>
+
+<!-- CUSTOMIZER -->
+<div id="cust">
+    <div class="cust-section">
+        <div class="cust-label">📐 Tower size</div>
+        <div style="display:flex; gap:8px;">
+            <button class="btn btn-ghost" style="flex:1" onclick="setSize(60,30)">S</button>
+            <button class="btn btn-ghost" style="flex:1" onclick="setSize(75,38)">M</button>
+            <button class="btn btn-ghost" style="flex:1" onclick="setSize(95,45)">L</button>
+        </div>
+    </div>
+    <div class="cust-section">
+        <div class="cust-label">🎨 Block colors</div>
+        <div id="paletteOpts" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+    </div>
+    <div class="cust-section">
+        <div class="cust-label">🌄 Background theme</div>
+        <div id="themeOpts" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+    </div>
+    <button class="btn btn-primary" onclick="closeAllOverlays()" style="width:100%; margin-top:4px;">CLOSE</button>
+</div>
+
+<!-- LEVEL MENU -->
+<div id="lmenu" class="overlay">
+    <div class="lmenu-title">📋 Mission Modules</div>
+    <div class="lmenu-section">
+        <div class="lmenu-section-label">🌍 Earth (1–10)</div>
+        <div class="lmenu-grid" id="lgEarth"></div>
+    </div>
+    <div class="lmenu-section">
+        <div class="lmenu-section-label">🌌 Cosmos (11–20)</div>
+        <div class="lmenu-grid" id="lgCosmos"></div>
+    </div>
+    <button class="btn btn-primary" onclick="closeAllOverlays()" style="margin-top:8px;">BACK</button>
+</div>
+
+<!-- WIN BANNER -->
+<div id="win">
+    <div class="cfx" id="cfx"></div>
+    <div class="win-left">
+        <div class="win-icon">🎉</div>
+        <div class="win-text">
+            <div class="win-title">LEVEL COMPLETE!</div>
+            <div class="win-sub">Solved in <span id="winMoves">0</span> moves</div>
+        </div>
+    </div>
+    <div class="win-moves" id="winMovesLarge">0</div>
+    <div class="win-btns">
+        <button class="btn btn-ghost" style="padding:10px 14px;" onclick="init(currentLevel)">↺</button>
+        <button class="btn btn-primary" id="nextBtn">Next →</button>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ─── PALETTES & THEMES ────────────────────────────────────────────────────────
+const PALETTES = {
+    standard: ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#F472B6','#94A3B8'],
+    neon:     ['#FF006E','#3A86FF','#8338EC','#FB5607','#FFBE0B','#06D6A0','#118AB2','#FF4D6D'],
+    pastel:   ['#F87171','#60A5FA','#4ADE80','#FBBF24','#C084FC','#22D3EE','#F472B6','#A3E635'],
+};
+
+const EARTH_THEMES = [
+    { id:'default', label:'Light',   bg:'#F8FAFC', gradient:'none',
+      surface:'#FFFFFF', border:'#E2E8F0', text:'#0F172A', accent:'#6366F1' },
+    { id:'forest',  label:'Forest',  bg:'#064e3b', gradient:'radial-gradient(circle,#065f46,#064e3b)',
+      surface:'rgba(255,255,255,0.15)', border:'rgba(255,255,255,0.3)', text:'#f0fdf4', accent:'#34d399' },
+    { id:'ocean',   label:'Ocean',   bg:'#0c4a6e', gradient:'radial-gradient(circle,#075985,#0c4a6e)',
+      surface:'rgba(255,255,255,0.15)', border:'rgba(255,255,255,0.3)', text:'#f0f9ff', accent:'#38bdf8' },
+    { id:'sunset',  label:'Sunset',  bg:'#7c2d12', gradient:'radial-gradient(circle,#9a3412,#7c2d12)',
+      surface:'rgba(255,255,255,0.15)', border:'rgba(255,255,255,0.3)', text:'#fff7ed', accent:'#fb923c' },
+    { id:'rose',    label:'Rose',    bg:'#881337', gradient:'radial-gradient(circle,#9f1239,#881337)',
+      surface:'rgba(255,255,255,0.15)', border:'rgba(255,255,255,0.3)', text:'#fff1f2', accent:'#fb7185' },
+];
+const COSMOS_THEMES = [
+    { id:'nebula', label:'Nebula', bg:'#020617', gradient:'radial-gradient(circle,#4338ca,#020617)',
+      surface:'rgba(15,23,42,0.8)', border:'#1E3A5F', text:'#E2E8F0', accent:'#818CF8' },
+    { id:'void',   label:'Void',   bg:'#000000', gradient:'radial-gradient(circle,#111827,#000)',
+      surface:'rgba(15,23,42,0.8)', border:'#1E293B', text:'#E2E8F0', accent:'#94A3B8' },
+    { id:'aurora', label:'Aurora', bg:'#020617', gradient:'radial-gradient(circle,#065f46,#020617)',
+      surface:'rgba(15,23,42,0.8)', border:'#1E3A5F', text:'#E2E8F0', accent:'#34d399' },
+    { id:'mars',   label:'Mars',   bg:'#020617', gradient:'radial-gradient(circle,#7c2d12,#020617)',
+      surface:'rgba(15,23,42,0.8)', border:'#1E3A5F', text:'#E2E8F0', accent:'#fb923c' },
+];
+
+function applyTheme(theme) {
+    const r = document.documentElement.style;
+    r.setProperty('--surface', theme.surface);
+    r.setProperty('--border',  theme.border);
+    r.setProperty('--text',    theme.text);
+    r.setProperty('--accent',  theme.accent);
+    document.body.style.background = theme.gradient !== 'none' ? theme.gradient : theme.bg;
+    currentBgId = theme.id;
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let towers=[], history=[], selected=null, moves=0, currentLevel=0;
+let gravityDir=0, gravityCounter=4, isAnimating=false;
+let towerW=75, blockH=38, COLORS=[...PALETTES.standard];
+let currentBgId = 'default';
+const completedLevels = new Set();
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init(lvl) {
+    if (lvl > 19) lvl = 19;
+    if (lvl < 0)  lvl = 0;
+    currentLevel = lvl;
+
+    const isCosmos = lvl >= 10;
+    document.body.className = isCosmos ? 'cosmos' : '';
+    // Zastosuj aktualny motyw płynnie (bez przeskoku klasy)
+    const themes = isCosmos ? COSMOS_THEMES : EARTH_THEMES;
+    const savedId = isCosmos ? (currentBgId || 'nebula') : (currentBgId || 'default');
+    const theme = themes.find(t => t.id === savedId) || themes[0];
+    applyTheme(theme);
+
+    document.getElementById('gravity-bar').className = isCosmos ? 'show' : '';
+    towers = generateLevel(isCosmos ? 5 : 4, 2);
+    moves=0; gravityDir=0; gravityCounter=4; selected=null; history=[];
+    document.getElementById('gArrow').style.transform = 'rotate(0deg)';
+    closeAllOverlays();
+    updateGravityUI();
+    render();
+}
+
+function generateLevel(cc, et) {
+    let b=[];
+    for(let i=0;i<cc;i++) for(let j=0;j<4;j++) b.push(i);
+    b.sort(()=>Math.random()-.5);
+    const r=[];
+    for(let i=0;i<cc;i++) r.push(b.slice(i*4,(i+1)*4));
+    for(let i=0;i<et;i++) r.push([]);
+    return r;
+}
+
+function setSize(w, h) {
+    towerW=w; blockH=h;
+    document.documentElement.style.setProperty('--tower-w', w+'px');
+    document.documentElement.style.setProperty('--tower-h', (w*2.8)+'px');
+    document.documentElement.style.setProperty('--block-h', h+'px');
+    render();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    towers.forEach((stack, i) => {
+        const isFull = stack.length >= 4;
+        const t = document.createElement('div');
+        t.className = 'tower'
+            + (selected===i ? ' selected' : '')
+            + (isDone(stack)  ? ' done'     : '')
+            + (isFull && !isDone(stack) ? ' full' : '');
+        t.style.transform = `rotate(${gravityDir * 180}deg)`;
+
+        // Kropki pojemności po lewej stronie (symetryczne — działają przy obrocie)
+        const dots = document.createElement('div');
+        dots.className = 'tower-dots';
+        for (let d = 0; d < 4; d++) {
+            const dot = document.createElement('div');
+            dot.className = 'tower-dot' + (d < stack.length ? ' filled' : '');
+            dots.appendChild(dot);
+        }
+        t.appendChild(dots);
+
+        const inner = document.createElement('div');
+        inner.className = 'tower-inner';
+        inner.style.flexDirection = gravityDir === 0 ? 'column-reverse' : 'column';
+
+        stack.forEach(c => {
+            const b = document.createElement('div');
+            b.className = 'block'; b.style.background = COLORS[c];
+            inner.appendChild(b);
+        });
+        t.appendChild(inner);
+
+        t.onclick = () => {
+            if (isAnimating) return;
+            if (selected === null) { if (towers[i].length) { selected = i; render(); } }
+            else { if (selected === i) { selected = null; render(); } else tryMove(selected, i); }
+        };
+        grid.appendChild(t);
+    });
+    document.getElementById('moves').textContent   = moves;
+    document.getElementById('lvl-num').textContent = currentLevel + 1;
+}
+
+// ─── MOVE ─────────────────────────────────────────────────────────────────────
+async function tryMove(from, to) {
+    const src=towers[from], dst=towers[to], topColor=src[src.length-1];
+    let count=0;
+    for(let i=src.length-1;i>=0;i--) { if(src[i]===topColor) count++; else break; }
+
+    if(dst.length+count>4 || (dst.length>0 && dst[dst.length-1]!==topColor)) {
+        selected=null; render(); return;
+    }
+
+    history.push(JSON.parse(JSON.stringify(towers)));
+    isAnimating=true;
+
+    // FIX 1: zapisz rects PRZED render() żeby DOM nie zniknął
+    const towerEls = document.querySelectorAll('.tower');
+    const fR = towerEls[from].getBoundingClientRect();
+    const tR = towerEls[to].getBoundingClientRect();
+    const dCount = dst.length;
+
+    for(let i=0;i<count;i++) src.pop();
+    render();
+
+    await animatePour(fR, tR, COLORS[topColor], count, dCount);
+
+    for(let i=0;i<count;i++) dst.push(topColor);
+    moves++; selected=null;
+
+    if(currentLevel>=10) {
+        gravityCounter--;
+        updateGravityUI();
+        if(gravityCounter<=0) await triggerFlip();
+    }
+
+    isAnimating=false;
+    render();
+    if(towers.every(t=>t.length===0||isDone(t))) showWin();
+}
+
+// ─── ANIMATION: FIX 1 — używa bottom zamiast top ─────────────────────────────
+async function animatePour(fR, tR, col, cnt, dCnt) {
+    const ghost = document.createElement('div');
+    ghost.style.cssText = `
+        position:fixed; pointer-events:none; z-index:9999;
+        width:${fR.width-20}px;
+        display:flex; flex-direction:${gravityDir===0?'column-reverse':'column'}; gap:4px;
+    `;
+    for(let i=0;i<cnt;i++) {
+        const b=document.createElement('div');
+        b.style.cssText=`width:100%;height:${blockH}px;border-radius:8px;background:${col};box-shadow:inset 0 -4px 0 rgba(0,0,0,0.2);flex-shrink:0;`;
+        ghost.appendChild(b);
+    }
+    document.body.appendChild(ghost);
+
+    // Pozycja startowa — na górze wieży źródłowej (używamy bottom!)
+    const startLeft   = fR.left + 10;
+    const startBottom = window.innerHeight - fR.top + 4;
+    ghost.style.left   = startLeft + 'px';
+    ghost.style.bottom = startBottom + 'px';
+
+    await delay(20);
+
+    // Faza 1: wzlot w górę
+    const liftAmt  = Math.max(80, Math.abs(tR.left - fR.left) * 0.35);
+    const liftBottom = startBottom + liftAmt;
+    setGhostTransition(ghost, 'bottom .22s cubic-bezier(.4,0,.2,1)');
+    ghost.style.bottom = liftBottom + 'px';
+    await delay(240);
+
+    // Faza 2: lot poziomy
+    setGhostTransition(ghost, 'left .22s linear');
+    ghost.style.left = (tR.left + 10) + 'px';
+    await delay(240);
+
+    // Faza 3: lądowanie (FIX 1 — pozycja liczona od dołu)
+    const stackHeightAbove = dCnt * (blockH + 4);
+    const endBottom = window.innerHeight - tR.bottom + 8 + stackHeightAbove;
+    setGhostTransition(ghost, 'bottom .22s cubic-bezier(.34,1.4,.64,1)');
+    ghost.style.bottom = endBottom + 'px';
+    await delay(240);
+
+    createImpact(tR.left + tR.width/2, tR.bottom - stackHeightAbove - blockH/2, col);
+    ghost.remove();
+}
+
+function setGhostTransition(el, t) { el.style.transition = t; }
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+function createImpact(x, y, col) {
+    for(let i=0;i<12;i++) {
+        const p=document.createElement('div'); p.className='particle';
+        p.style.background=col; p.style.left=x+'px'; p.style.top=y+'px';
+        p.style.setProperty('--dx',(Math.random()-.5)*150+'px');
+        p.style.setProperty('--dy',(Math.random()-.5)*100+'px');
+        document.body.appendChild(p); setTimeout(()=>p.remove(),600);
+    }
+}
+
+// ─── GRAVITY FLIP ────────────────────────────────────────────────────────────
+async function triggerFlip() {
+    isAnimating = true;
+    toast('GRAVITY INVERSION!');
+    gravityDir = gravityDir === 0 ? 1 : 0;
+    gravityCounter = 4;
+
+    document.getElementById('gArrow').style.transform = `rotate(${gravityDir * 180}deg)`;
+
+    // Obróć wieże CSS-em
+    document.querySelectorAll('.tower').forEach(t => {
+        t.style.transform = `rotate(${gravityDir * 180}deg)`;
+    });
+
+    // Czekaj dokładnie tyle ile trwa CSS transition (800ms)
+    await delay(820);
+
+    // Logiczne odwrócenie danych
+    towers = towers.map(t => [...t].reverse());
+    updateGravityUI();
+
+    // render() tworzy nowe elementy DOM — muszą od razu mieć właściwy transform
+    // BEZ transition żeby nie było "skoku" z 0deg do 180deg
+    render();
+    document.querySelectorAll('.tower').forEach(t => {
+        t.style.transition = 'none';
+        t.style.transform  = `rotate(${gravityDir * 180}deg)`;
+    });
+    // Przywróć transition w następnej klatce
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.querySelectorAll('.tower').forEach(t => {
+                t.style.transition = '';
+            });
+        });
+    });
+
+    isAnimating = false;
+}
+
+function updateGravityUI() {
+    const pips=document.getElementById('gPips'); pips.innerHTML='';
+    for(let i=0;i<4;i++) {
+        const p=document.createElement('div');
+        p.className='g-pip'+(i<(4-gravityCounter)?' active':'');
+        pips.appendChild(p);
+    }
+}
+
+// ─── WIN: FIX 4 ───────────────────────────────────────────────────────────────
+function showWin() {
+    completedLevels.add(currentLevel);
+    document.getElementById('winMoves').textContent = moves;
+    document.getElementById('winMovesLarge').textContent = moves;
+    document.getElementById('win').classList.add('open');
+    spawnConfetti();
+    const nextBtn = document.getElementById('nextBtn');
+    if (currentLevel >= 19) {
+        nextBtn.textContent = '🏆 Done!';
+        nextBtn.onclick = () => closeAllOverlays();
+    } else {
+        nextBtn.textContent = 'Next →';
+        nextBtn.onclick = () => init(currentLevel + 1);
+    }
+}
+
+function spawnConfetti() {
+    const c=document.getElementById('cfx'); c.innerHTML='';
+    const cols=['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#F472B6'];
+    for(let i=0;i<80;i++) {
+        const p=document.createElement('div'); p.className='cp';
+        p.style.cssText=`left:${Math.random()*100}vw;background:${cols[~~(Math.random()*cols.length)]};
+        width:${5+Math.random()*7}px;height:${6+Math.random()*9}px;
+        border-radius:${Math.random()>.5?'50%':'3px'};
+        animation:cfal ${1.2+Math.random()*1.8}s linear ${Math.random()*.7}s forwards;
+        transform:rotate(${Math.random()*360}deg);`;
+        c.appendChild(p);
+    }
+}
+
+// ─── LEVEL MENU: FIX 2 ────────────────────────────────────────────────────────
+document.getElementById('lvlBtn').onclick = () => {
+    const eg=document.getElementById('lgEarth'), cg=document.getElementById('lgCosmos');
+    eg.innerHTML=''; cg.innerHTML='';
+    for(let i=0;i<20;i++) {
+        const b=document.createElement('button');
+        b.className='lvl-btn'
+            +(i===currentLevel?' current':'')
+            +(completedLevels.has(i)?' done':'');
+        b.textContent=i+1;
+        b.onclick=()=>{ init(i); closeAllOverlays(); };
+        (i<10?eg:cg).appendChild(b);
+    }
+    document.getElementById('lmenu').classList.add('open');
+};
+
+// ─── CUSTOMIZER: FIX 3 ────────────────────────────────────────────────────────
+document.getElementById('custBtn').onclick = () => {
+    // Palety — podgląd z małymi kolorowymi kwadratami
+    const pCont=document.getElementById('paletteOpts'); pCont.innerHTML='';
+    Object.entries(PALETTES).forEach(([name, colors]) => {
+        const wrap=document.createElement('div');
+        wrap.className='palette-swatch'+(COLORS===PALETTES[name]?' on':'');
+
+        // 8 małych kwadratów
+        colors.forEach(c => {
+            const d=document.createElement('div'); d.style.background=c;
+            wrap.appendChild(d);
+        });
+        // Etykieta pod spodem
+        const lbl=document.createElement('div');
+        lbl.style.cssText='width:100%;font-size:.52rem;font-weight:800;text-align:center;color:var(--text);opacity:.5;margin-top:2px;text-transform:uppercase;';
+        lbl.textContent=name;
+        wrap.onclick=()=>{
+            COLORS=[...colors]; render();
+            document.querySelectorAll('.palette-swatch').forEach(s=>s.classList.remove('on'));
+            wrap.classList.add('on');
+        };
+        pCont.appendChild(wrap);
+    });
+
+    // Motywy tła — płynna zmiana przez applyTheme
+    const tCont=document.getElementById('themeOpts'); tCont.innerHTML='';
+    const themes = currentLevel<10 ? EARTH_THEMES : COSMOS_THEMES;
+    themes.forEach(t => {
+        const sw=document.createElement('div');
+        sw.className='theme-swatch'+(currentBgId===t.id?' on':'');
+        // Podgląd jako gradient/kolor
+        sw.style.cssText = t.gradient !== 'none'
+            ? `background:${t.gradient}`
+            : `background:${t.bg}`;
+        const lbl=document.createElement('span'); lbl.textContent=t.label;
+        sw.appendChild(lbl);
+        sw.onclick=()=>{
+            applyTheme(t);
+            document.querySelectorAll('.theme-swatch').forEach(s=>s.classList.remove('on'));
+            sw.classList.add('on');
+        };
+        tCont.appendChild(sw);
+    });
+
+    document.getElementById('cust').classList.add('open');
+};
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function isDone(s) { return s.length===4 && s.every(c=>c===s[0]); }
+function closeAllOverlays() {
+    document.querySelectorAll('.overlay,#cust').forEach(e=>e.classList.remove('open'));
+    document.getElementById('win').classList.remove('open');
+}
+function toast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2000); }
+function undoMove() { if(history.length&&!isAnimating){ towers=history.pop(); moves=Math.max(0,moves-1); render(); } }
+
+// ─── START ────────────────────────────────────────────────────────────────────
+init(0);
+</script>
+</body>
+</html>

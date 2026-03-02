@@ -189,7 +189,6 @@
         .lvl-btn.current { background: #6366F1; border-color: #6366F1; color: #fff; }
         .lvl-btn.done   { border-color: #22C55E; color: #22C55E; }
         .lvl-btn.done::after { content: '✓'; position: absolute; top: 4px; right: 6px; font-size: .55rem; color: #22C55E; }
-        .lvl-btn.done::after { content: '✓'; position: absolute; top: 4px; right: 6px; font-size: .55rem; color: #22C55E; }
 
         /* ── LEVEL SELECT ───────────────────────────────────────────────────────── */
         #lsel {
@@ -316,20 +315,6 @@
     </div>
 
     <button class="btn btn-primary" onclick="closeAllOverlays()" style="width:100%; margin-top:4px;">ZAMKNIJ</button>
-</div>
-
-<!-- LEVEL MENU -->
-<div id="lmenu" class="overlay">
-    <div class="lmenu-title">📋 Mission Modules</div>
-    <div class="lmenu-section">
-        <div class="lmenu-section-label">🌍 Earth (1–10)</div>
-        <div class="lmenu-grid" id="lgEarth"></div>
-    </div>
-    <div class="lmenu-section">
-        <div class="lmenu-section-label">🌌 Cosmos (11–20)</div>
-        <div class="lmenu-grid" id="lgCosmos"></div>
-    </div>
-    <button class="btn btn-primary" onclick="closeAllOverlays()" style="margin-top:8px;">BACK</button>
 </div>
 
 <!-- LEVEL SELECT -->
@@ -467,6 +452,7 @@ function applyCosmosTheme(themeId) {
 let towers=[], history=[], selected=null, moves=0, currentLevel=0;
 let gravityDir=0, gravityCounter=4, isAnimating=false;
 let towerW=75, blockH=38, COLORS=[...PALETTE];
+let currentPaletteName = 'standard';
 let currentBgId = 'light';
 let currentShape = 'pill';
 let C = { bg:'light', shape:'pill', size:52 };
@@ -726,7 +712,7 @@ async function animatePour(fR, tR, col, cnt, dCnt) {
     document.body.appendChild(ghost);
 
     const startLeft   = fR.left + 10;
-    const startBottom = window.innerHeight - fR.top + 4;
+    const startBottom = window.innerHeight - fR.bottom + 4;
     ghost.style.left   = startLeft + 'px';
     ghost.style.bottom = startBottom + 'px';
 
@@ -839,11 +825,8 @@ function spawnConfetti() {
 
 // ─── LEVEL MENU: FIX 2 ────────────────────────────────────────────────────────
 document.getElementById('lvlBtn').addEventListener('click', () => {
-    console.log('lvlBtn clicked');
     buildLvlSelect();
-    console.log('lsel element:', document.getElementById('lsel'));
     document.getElementById('lsel').classList.add('on');
-    console.log('lsel classList after add:', document.getElementById('lsel').classList);
 });
 
 function buildLvlSelect() {
@@ -897,7 +880,7 @@ function buildPaletteSwatches() {
     const pCont=document.getElementById('paletteOpts'); pCont.innerHTML='';
     Object.entries(PALETTES).forEach(([name, colors]) => {
         const wrap=document.createElement('div');
-        wrap.className='palette-swatch'+(COLORS===colors?' on':'');
+        wrap.className='palette-swatch'+(name===currentPaletteName?' on':'');
 
         colors.forEach(c => {
             const d=document.createElement('div'); d.style.background=c;
@@ -907,7 +890,7 @@ function buildPaletteSwatches() {
         lbl.style.cssText='width:100%;font-size:.52rem;font-weight:800;text-align:center;color:var(--text);opacity:.5;margin-top:2px;text-transform:uppercase;';
         lbl.textContent=name;
         wrap.onclick=()=>{
-            COLORS=[...colors]; render();
+            currentPaletteName=name; COLORS=[...colors]; render();
             document.querySelectorAll('.palette-swatch').forEach(s=>s.classList.remove('on'));
             wrap.classList.add('on');
         };
@@ -955,7 +938,6 @@ document.getElementById('custClose').addEventListener('click',()=>{
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function isDone(s) { return s.length===CAP && s.every(c=>c===s[0]); }
 function closeAllOverlays() {
-    console.log('closeAllOverlays called');
     document.querySelectorAll('.overlay,#cust').forEach(e=>e.classList.remove('on','open'));
     document.getElementById('win').classList.remove('open');
 }

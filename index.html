@@ -12,7 +12,7 @@
         :root {
             --bg: #F5F3EF; --surface: #FFFFFF; --border: #E8E4DC;
             --text: #1A1A2E; --text2: #8A8A9A; --accent: #FF5A5F; --accent2: #FFB347;
-            --block-h: 38px; --tower-w: 75px; --tower-h: 220px;
+            --block-h: 35px; --tower-w: 70px; --tower-h: 196px;
         }
 
         body.bg-forest { background: radial-gradient(circle, #065f46 0%, #064e3b 100%); --surface: rgba(255,255,255,0.15); --border: rgba(255,255,255,0.3); --text: #f0fdf4; }
@@ -88,12 +88,6 @@
         .tower.full:not(.done):not(.selected) .tower-dot.filled { background: #EF4444; }
         .tower.done .tower-dot.filled { background: #22C55E; }
 
-        .tower.shape-round { border-radius: 50px 50px 30px 30px; }
-        .tower.shape-glass { border-radius: 8px 8px 20px 20px; }
-        .tower.shape-mug { border-radius: 8px 8px 20px 20px; }
-        .tower.shape-flask { border-radius: 30px 30px 50px 50px; }
-        .tower.shape-shot { border-radius: 6px 6px 15px 15px; }
-        .tower.shape-wineglass { border-radius: 50px 50px 10px 10px; }
 
         .tower-inner { flex: 1; display: flex; gap: 4px; width: 100%; height: 100%; }
         .block { width: 100%; height: var(--block-h); border-radius: 10px; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2); flex-shrink: 0; }
@@ -135,27 +129,13 @@
             color: rgba(255,255,255,.95); text-shadow: 0 1px 3px rgba(0,0,0,.6);
         }
 
-        .shsw {
-            width: 54px; border-radius: 12px; cursor: pointer;
-            padding: 8px 5px 6px;
-            border: 2.5px solid var(--border); background: var(--bg);
-            transition: .18s all;
-            display: flex; flex-direction: column; align-items: center; gap: 5px;
+        .szBtn {
+            flex: 1; padding: 9px 0; border-radius: 10px; cursor: pointer;
+            background: var(--surface); border: 2px solid var(--border);
+            color: var(--text2); font-weight: 800; font-size: .82rem; transition: .18s;
         }
-        .shsw.on { border-color: var(--accent); background: rgba(255,90,95,.06); }
-        .shsw:hover { border-color: #ccc; }
-        .shsw span { font-size: .54rem; font-weight: 700; color: var(--text2); }
-
-        .slrow { display: flex; align-items: center; gap: 12px; }
-        input[type=range] {
-            -webkit-appearance: none; flex: 1; height: 6px;
-            border-radius: 3px; background: var(--border); outline: none; cursor: pointer;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
-            background: var(--accent); box-shadow: 0 2px 8px rgba(255,90,95,.4); cursor: pointer;
-        }
-        .slv { font-weight: 800; font-size: .8rem; min-width: 28px; text-align: right; color: var(--text2); }
+        .szBtn.on  { border-color: var(--accent); color: var(--text); }
+        .szBtn:hover { border-color: var(--accent); }
 
         .palette-swatch {
             display: flex; gap: 3px; flex-wrap: wrap; width: 60px; height: 40px;
@@ -288,24 +268,18 @@
         <div id="bgOpts" style="display:flex; gap:10px; flex-wrap:wrap;">
             <div class="bgsw on" data-bg="light" style="background:linear-gradient(135deg,#F5F3EF,#EAE6DC)"><span>Jasny</span></div>
             <div class="bgsw" data-bg="dark" style="background:linear-gradient(135deg,#1a1a2e,#0d0d1a)"><span>Ciemny</span></div>
-            <div class="bgsw" data-bg="blue" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe)"><span>Błękit</span></div>
-            <div class="bgsw" data-bg="green" style="background:linear-gradient(135deg,#dcfce7,#bbf7d0)"><span>Zieleń</span></div>
-            <div class="bgsw" data-bg="peach" style="background:linear-gradient(135deg,#ffedd5,#fed7aa)"><span>Brzoskw.</span></div>
+            <div class="bgsw" data-bg="blue"  style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a)"><span>Błękit</span></div>
+            <div class="bgsw" data-bg="green" style="background:linear-gradient(135deg,#15803d,#14532d)"><span>Zieleń</span></div>
+            <div class="bgsw" data-bg="peach" style="background:linear-gradient(135deg,#c2410c,#9a3412)"><span>Brzoskw.</span></div>
         </div>
     </div>
 
     <div class="cust-section">
-        <div class="cust-label">🧪 Kształt naczynia</div>
-        <div id="shapeOpts" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
-    </div>
-
-    <div class="cust-section">
-        <div class="cust-label">📐 Rozmiar</div>
-        <div class="slrow">
-            <span style="font-size:.72rem;color:var(--text2)">S</span>
-            <input type="range" id="szSl" min="38" max="80" value="52">
-            <span style="font-size:.72rem;color:var(--text2)">L</span>
-            <span class="slv" id="szV">52</span>
+        <div class="cust-label">📐 Rozmiar butelki</div>
+        <div style="display:flex;gap:8px;" id="sizeOpts">
+            <button class="szBtn" data-w="52" data-h="26">S</button>
+            <button class="szBtn on" data-w="70" data-h="35">M</button>
+            <button class="szBtn" data-w="85" data-h="43">L</button>
         </div>
     </div>
 
@@ -368,9 +342,9 @@ const LEVELS = [
 const BG_THEMES = {
     light: { bg:'#F5F3EF', dot:'rgba(0,0,0,0.04)', text:'#1A1A2E', text2:'#8A8A9A', surface:'#FFFFFF', border:'#E8E4DC', accent:'#FF5A5F' },
     dark:  { bg:'#14141F', dot:'rgba(255,255,255,0.04)', text:'#F0F0F0', text2:'#6B6B80', surface:'#1E1E2E', border:'#2A2A3E', accent:'#FF5A5F' },
-    blue:  { bg:'#EFF6FF', dot:'rgba(59,130,246,0.06)', text:'#1E3A5F', text2:'#6B90B0', surface:'#FFFFFF', border:'#BFDBFE', accent:'#3B82F6' },
-    green: { bg:'#F0FDF4', dot:'rgba(34,197,94,0.06)', text:'#14532D', text2:'#6B9E7A', surface:'#FFFFFF', border:'#BBF7D0', accent:'#22C55E' },
-    peach: { bg:'#FFF7ED', dot:'rgba(249,115,22,0.06)', text:'#7C2D12', text2:'#B07A5A', surface:'#FFFFFF', border:'#FED7AA', accent:'#F97316' },
+    blue:  { bg:'#1e3a8a', dot:'rgba(96,165,250,0.1)',  text:'#e0f2fe', text2:'#93c5fd', surface:'rgba(255,255,255,0.1)', border:'rgba(255,255,255,0.22)', accent:'#60a5fa' },
+    green: { bg:'#14532d', dot:'rgba(74,222,128,0.1)',  text:'#dcfce7', text2:'#86efac', surface:'rgba(255,255,255,0.1)', border:'rgba(255,255,255,0.22)', accent:'#4ade80' },
+    peach: { bg:'#9a3412', dot:'rgba(251,146,60,0.1)',  text:'#fff7ed', text2:'#fdba74', surface:'rgba(255,255,255,0.1)', border:'rgba(255,255,255,0.22)', accent:'#fb923c' },
 };
 
 // ─── PALETTES ─────────────────────────────────────────────────────────────────
@@ -404,17 +378,6 @@ const COSMOS_THEMES = [
       surface:'rgba(15,23,42,0.8)', border:'#1E3A5F', text:'#E2E8F0', accent:'#fb923c' },
 ];
 
-// ─── SHAPES ───────────────────────────────────────────────────────────────────
-const SHAPES = {
-    pill: { label: 'Probówka', emoji: '🧪' },
-    round: { label: 'Butelka', emoji: '🍾' },
-    glass: { label: 'Szklanka', emoji: '🥛' },
-    wineglass: { label: 'Kieliszek', emoji: '🍷' },
-    mug: { label: 'Kubek', emoji: '☕' },
-    flask: { label: 'Kolba', emoji: '⚗️' },
-    shot: { label: 'Shot', emoji: '🥃' },
-};
-const SHAPE_KEYS = Object.keys(SHAPES);
 
 function applyTheme(bgKey) {
     if (BG_THEMES[bgKey]) {
@@ -451,11 +414,10 @@ function applyCosmosTheme(themeId) {
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let towers=[], history=[], selected=null, moves=0, currentLevel=0;
 let gravityDir=0, gravityCounter=4, isAnimating=false;
-let towerW=75, blockH=38, COLORS=[...PALETTE];
+let towerW=70, blockH=35, COLORS=[...PALETTE];
 let currentPaletteName = 'standard';
 let currentBgId = 'light';
-let currentShape = 'pill';
-let C = { bg:'light', shape:'pill', size:52 };
+let C = { bg:'light', size:70 };
 const completedLevels = new Set();
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
@@ -518,7 +480,7 @@ function render() {
     towers.forEach((stack, i) => {
         const isFull = stack.length >= 4;
         const t = document.createElement('div');
-        t.className = 'tower shape-' + currentShape
+        t.className = 'tower'
             + (selected===i ? ' selected' : '')
             + (isDone(stack)  ? ' done'     : '')
             + (isFull && !isDone(stack) ? ' full' : '');
@@ -718,7 +680,7 @@ async function animatePour(fR, tR, col, cnt, dCnt) {
 
     await delay(20);
 
-    const liftAmt  = Math.max(80, Math.abs(tR.left - fR.left) * 0.35);
+    const liftAmt  = Math.max(fR.height + 30, Math.abs(tR.left - fR.left) * 0.4);
     const liftBottom = startBottom + liftAmt;
     ghost.style.transition = 'bottom .22s cubic-bezier(.4,0,.2,1)';
     ghost.style.bottom = liftBottom + 'px';
@@ -733,12 +695,6 @@ async function animatePour(fR, tR, col, cnt, dCnt) {
     ghost.style.transition = 'bottom .22s cubic-bezier(.34,1.4,.64,1)';
     ghost.style.bottom = endBottom + 'px';
     await delay(240);
-
-    startPour(
-        { getBoundingClientRect: () => ({ left: fR.left + 10, top: fR.top, width: fR.width-20, height: blockH }) },
-        { getBoundingClientRect: () => ({ left: tR.left + 10, top: tR.bottom - stackHeightAbove - blockH, width: tR.width-20, height: blockH }) },
-        col
-    );
 
     ghost.remove();
 }
@@ -846,35 +802,11 @@ function buildLvlSelect() {
 
 // ─── CUSTOMIZER: FIX 3 ────────────────────────────────────────────────────────
 document.getElementById('custBtn').onclick = () => {
-    buildShapeSwatches();
     buildPaletteSwatches();
     buildBgSwatches();
     document.getElementById('cust').classList.add('open');
 };
 
-function buildShapeSwatches() {
-    const cont=document.getElementById('shapeOpts'); cont.innerHTML='';
-    SHAPE_KEYS.forEach(key=>{
-        const sh=SHAPES[key];
-        const div=document.createElement('div');
-        div.className='shsw'+(key===currentShape?' on':'');
-        
-        const icon = document.createElement('div');
-        icon.style.cssText = 'font-size: 1.4rem;';
-        icon.textContent = sh.emoji;
-        
-        const lbl = document.createElement('span'); lbl.textContent = sh.label;
-        div.appendChild(icon); div.appendChild(lbl);
-        
-        div.addEventListener('click',()=>{
-            currentShape = key;
-            document.querySelectorAll('.shsw').forEach(e=>e.classList.remove('on'));
-            div.classList.add('on');
-            render();
-        });
-        cont.appendChild(div);
-    });
-}
 
 function buildPaletteSwatches() {
     const pCont=document.getElementById('paletteOpts'); pCont.innerHTML='';
@@ -913,22 +845,14 @@ document.getElementById('bgOpts')?.addEventListener('click',(e)=>{
     applyTheme(el.dataset.bg);
 });
 
-// Size slider
-const szSl = document.getElementById('szSl');
-const szV = document.getElementById('szV');
-if (szSl) {
-    szSl.value = towerW;
-    szV.textContent = towerW;
-    szSl.addEventListener('input',()=>{
-        const w = +szSl.value;
-        towerW = w;
-        blockH = Math.round(w * 0.5);
-        szV.textContent = w;
-        document.documentElement.style.setProperty('--tower-w', w+'px');
-        document.documentElement.style.setProperty('--tower-h', (w*2.8)+'px');
-        document.documentElement.style.setProperty('--block-h', blockH+'px');
-    });
-}
+// Size buttons
+document.getElementById('sizeOpts').addEventListener('click', e => {
+    const btn = e.target.closest('.szBtn');
+    if (!btn) return;
+    document.querySelectorAll('.szBtn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    setSize(+btn.dataset.w, +btn.dataset.h);
+});
 
 // Cust close
 document.getElementById('custClose').addEventListener('click',()=>{

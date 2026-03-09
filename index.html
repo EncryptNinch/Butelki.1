@@ -323,11 +323,6 @@
 'use strict';
 
 // ─── PALETTE & LEVELS ──────────────────────────────────────────────────────────
-const PALETTE = [
-    '#E63946', '#457B9D', '#2A9D8F', '#E9C46A', '#9B5DE5', '#F77F00',
-    '#FF006E', '#00B4D8', '#80ED99', '#D62828', '#7209B7', '#00F5D4',
-];
-
 const CAP = 4;
 const LEVELS = [
     [3,2],[3,2],[4,2],[4,2],[4,2],
@@ -349,10 +344,9 @@ const BG_THEMES = {
 
 // ─── PALETTES ─────────────────────────────────────────────────────────────────
 const PALETTES = {
-    standard: ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#F472B6','#94A3B8'],
-    neon:     ['#FF006E','#3A86FF','#8338EC','#FB5607','#FFBE0B','#06D6A0','#118AB2','#FF4D6D'],
-    pastel:   ['#F87171','#60A5FA','#4ADE80','#FBBF24','#C084FC','#22D3EE','#F472B6','#A3E635'],
-    vivid:    ['#FF5A5F','#3B82F6','#22C55E','#F59E0B','#A855F7','#F97316','#EC4899','#06B6D4'],
+    normal: ['#2563EB','#16A34A','#F59E0B','#DC2626','#7C3AED','#0891B2','#D946EF','#334155'],
+    neon:   ['#FF006E','#00E5FF','#39FF14','#FFE700','#FF7A00','#B300FF','#00FFB3','#2D6BFF'],
+    pastel: ['#F4A6A6','#AFCBFF','#B8E1C6','#F9D7A5','#CDB7F6','#AEE6E6','#F7B2D9','#C6D1DE'],
 };
 
 const EARTH_THEMES = [
@@ -414,8 +408,8 @@ function applyCosmosTheme(themeId) {
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let towers=[], history=[], selected=null, moves=0, currentLevel=0;
 let gravityDir=0, gravityCounter=4, isAnimating=false;
-let towerW=70, blockH=35, COLORS=[...PALETTE];
-let currentPaletteName = 'standard';
+let towerW=70, blockH=35, COLORS=[...PALETTES.normal];
+let currentPaletteName = 'normal';
 let currentBgId = 'light';
 let C = { bg:'light', size:70 };
 const completedLevels = new Set();
@@ -457,33 +451,27 @@ function generateLevel(cc, et, lvl) {
     const difficulty = getDifficultyTargets(lvl, cc, et);
     let best = null;
     let bestScore = -1;
+    const levelFactor = lvl / 29;
+    const minMixed = Math.max(2, Math.min(cc, Math.floor(2 + levelFactor * (cc - 1))));
 
-    for (let attempt = 0; attempt < 40; attempt++) {
-        const state = createSolvedState(cc, et);
-        const extra = Math.floor(Math.random() * 7) - 3;
-        const steps = Math.max(8, difficulty.scrambleSteps + extra);
-        let prevMove = null;
-
-        for (let i = 0; i < steps; i++) {
-            const moves = getLegalMoves(state).filter(m => !isInverseMove(prevMove, m));
-            if (!moves.length) break;
-            const move = moves[Math.floor(Math.random() * moves.length)];
-            applyMoveToState(state, move.from, move.to);
-            prevMove = move;
-        }
-
+    for (let attempt = 0; attempt < 60; attempt++) {
+        const state = generateSolvableState(cc, et, difficulty.scrambleSteps);
         const score = evaluateState(state, cc);
         const solved = state.every(t => t.length === 0 || isDone(t));
+        const doneCount = state.filter(s => isDone(s)).length;
+        const mixedCount = countMixedTowers(state);
         const meets =
             !solved &&
             score.transitions >= difficulty.minTransitions &&
             score.spread >= difficulty.minSpread &&
-            score.legalMoves >= difficulty.minLegalMoves;
+            score.legalMoves >= difficulty.minLegalMoves &&
+            doneCount <= Math.max(1, Math.floor(cc * 0.2)) &&
+            mixedCount >= minMixed;
 
         if (meets) return state;
 
-        const weighted = score.transitions * 3 + score.spread * 2 + score.legalMoves;
-        if (weighted > bestScore) {
+        const weighted = score.transitions * 3 + score.spread * 2 + score.legalMoves + mixedCount * 2 - doneCount * 3;
+        if (!solved && weighted > bestScore) {
             best = state;
             bestScore = weighted;
         }
@@ -539,21 +527,77 @@ function getLegalMoves(state) {
     return moves;
 }
 
-function isInverseMove(prev, next) {
-    return !!prev && prev.from === next.to && prev.to === next.from;
+function getPredecessorMoves(state) {
+    const moves = [];
+    for (let to = 0; to < state.length; to++) {
+        const dstNow = state[to];
+        if (!dstNow.length) continue;
+        const color = dstNow[dstNow.length - 1];
+        const topRun = getTopRunLength(dstNow);
+
+        for (let from = 0; from < state.length; from++) {
+            if (from === to) continue;
+            const srcNow = state[from];
+            if (srcNow.length >= CAP) continue;
+
+            for (let count = 1; count <= topRun && srcNow.length + count <= CAP; count++) {
+                const remainingLen = dstNow.length - count;
+                const remainingTop = remainingLen ? dstNow[remainingLen - 1] : null;
+                if (remainingTop !== null && remainingTop !== color) continue;
+
+                const srcRunBefore = (srcNow.length && srcNow[srcNow.length - 1] === color)
+                    ? getTopRunLength(srcNow) + count
+                    : count;
+                const freeDstBefore = CAP - remainingLen;
+                const movedForward = Math.min(srcRunBefore, freeDstBefore);
+                if (movedForward !== count) continue;
+
+                moves.push({ from, to, count });
+            }
+        }
+    }
+    return moves;
 }
 
-function applyMoveToState(state, from, to) {
-    const src = state[from];
-    const dst = state[to];
-    const top = src[src.length - 1];
-    let count = 0;
-    for (let i = src.length - 1; i >= 0; i--) {
-        if (src[i] === top && dst.length + count < CAP) count++;
-        else break;
+function applyPredecessorMove(state, move) {
+    const dstNow = state[move.to];
+    const srcNow = state[move.from];
+    const color = dstNow[dstNow.length - 1];
+    for (let i = 0; i < move.count; i++) dstNow.pop();
+    for (let i = 0; i < move.count; i++) srcNow.push(color);
+}
+
+function isBacktrackPredecessorMove(prev, next) {
+    return !!prev &&
+        prev.from === next.to &&
+        prev.to === next.from &&
+        prev.count === next.count;
+}
+
+function countMixedTowers(state) {
+    return state.filter(t => t.length && !isDone(t)).length;
+}
+
+function generateSolvableState(cc, et, targetSteps) {
+    const state = createSolvedState(cc, et);
+    let prev = null;
+    const steps = Math.max(16, targetSteps + (Math.floor(Math.random() * 7) - 3));
+
+    for (let i = 0; i < steps; i++) {
+        let moves = getPredecessorMoves(state).filter(m => !isBacktrackPredecessorMove(prev, m));
+        if (!moves.length) break;
+
+        moves.sort((a, b) => {
+            const aScore = state[a.from].length - state[b.from].length;
+            return aScore;
+        });
+        const pickCount = Math.min(12, moves.length);
+        const move = moves[Math.floor(Math.random() * pickCount)];
+        applyPredecessorMove(state, move);
+        prev = move;
     }
-    for (let i = 0; i < count; i++) src.pop();
-    for (let i = 0; i < count; i++) dst.push(top);
+
+    return state;
 }
 
 function evaluateState(state, cc) {
@@ -583,16 +627,8 @@ function evaluateState(state, cc) {
 }
 
 function generateLevelFallback(cc, et) {
-    const balls = [];
-    for (let c = 0; c < cc; c++) for (let i = 0; i < CAP; i++) balls.push(c);
-    for (let i = balls.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [balls[i], balls[j]] = [balls[j], balls[i]];
-    }
-    const out = [];
-    for (let i = 0; i < cc; i++) out.push(balls.slice(i * CAP, (i + 1) * CAP));
-    for (let i = 0; i < et; i++) out.push([]);
-    return out;
+    // Awaryjnie też zwracamy stan gwarantowanie rozwiązywalny (reverse-generate).
+    return generateSolvableState(cc, et, 28 + cc);
 }
 
 function setSize(w, h) {
@@ -798,20 +834,62 @@ function pourLoop() {
     if (pours.length>0) rafId=requestAnimationFrame(pourLoop);
     else rafId=null;
 }
-function startPour(fromEl, toEl, color) {
-    pours.push(new Pour(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), color, ()=>{}));
-    if (!rafId) rafId=requestAnimationFrame(pourLoop);
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+function transitionTo(el, props, transition, fallbackMs = 260) {
+    return new Promise(resolve => {
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            el.removeEventListener('transitionend', onEnd);
+            resolve();
+        };
+        const onEnd = (e) => {
+            if (e.target !== el) return;
+            finish();
+        };
+        el.addEventListener('transitionend', onEnd);
+        el.style.transition = transition;
+        Object.entries(props).forEach(([k, v]) => { el.style[k] = v; });
+        setTimeout(finish, fallbackMs);
+    });
 }
 
-function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function waitForTransitionEnd(el, fallbackMs = 900) {
+    return new Promise(resolve => {
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            el.removeEventListener('transitionend', onEnd);
+            resolve();
+        };
+        const onEnd = (e) => {
+            if (e.target !== el || e.propertyName !== 'transform') return;
+            finish();
+        };
+        el.addEventListener('transitionend', onEnd);
+        setTimeout(finish, fallbackMs);
+    });
+}
 
 // ─── ANIMATION ────────────────────────────────────────────────────────────────
 async function animatePour(fR, tR, col, cnt, dCnt) {
+    const ghostH = cnt * blockH + (cnt - 1) * 4;
+    const startLeft = fR.left + 10;
+    const startTop = fR.top + 8;
+    const targetLeft = tR.left + 10;
+    const targetTop = tR.bottom - 8 - (dCnt * (blockH + 4)) - ghostH;
+    const liftTop = Math.max(12, Math.min(startTop, targetTop) - Math.max(24, Math.abs(targetLeft - startLeft) * 0.25));
+
     const ghost = document.createElement('div');
     ghost.style.cssText = `
         position:fixed; pointer-events:none; z-index:9999;
         width:${fR.width-20}px;
         display:flex; flex-direction:${gravityDir===0?'column-reverse':'column'}; gap:4px;
+        left:${startLeft}px; top:${startTop}px;
+        will-change:left,top;
     `;
     for(let i=0;i<cnt;i++) {
         const b=document.createElement('div');
@@ -820,28 +898,10 @@ async function animatePour(fR, tR, col, cnt, dCnt) {
     }
     document.body.appendChild(ghost);
 
-    const startLeft   = fR.left + 10;
-    const startBottom = window.innerHeight - fR.bottom + 4;
-    ghost.style.left   = startLeft + 'px';
-    ghost.style.bottom = startBottom + 'px';
-
-    await delay(20);
-
-    const liftAmt  = Math.max(fR.height + 30, Math.abs(tR.left - fR.left) * 0.4);
-    const liftBottom = startBottom + liftAmt;
-    ghost.style.transition = 'bottom .22s cubic-bezier(.4,0,.2,1)';
-    ghost.style.bottom = liftBottom + 'px';
-    await delay(240);
-
-    ghost.style.transition = 'left .22s linear';
-    ghost.style.left = (tR.left + 10) + 'px';
-    await delay(240);
-
-    const stackHeightAbove = dCnt * (blockH + 4);
-    const endBottom = window.innerHeight - tR.bottom + 8 + stackHeightAbove;
-    ghost.style.transition = 'bottom .22s cubic-bezier(.34,1.4,.64,1)';
-    ghost.style.bottom = endBottom + 'px';
-    await delay(240);
+    await delay(8);
+    await transitionTo(ghost, { top: liftTop + 'px' }, 'top .20s cubic-bezier(.33,1,.68,1)', 260);
+    await transitionTo(ghost, { left: targetLeft + 'px' }, 'left .24s cubic-bezier(.22,1,.36,1)', 300);
+    await transitionTo(ghost, { top: targetTop + 'px' }, 'top .22s cubic-bezier(.2,.9,.2,1)', 280);
 
     ghost.remove();
 }
@@ -860,8 +920,12 @@ async function triggerFlip() {
         t.style.transform = `rotate(${gravityDir * 180}deg)`;
     });
 
-    // Czekaj dokładnie tyle ile trwa CSS transition (800ms)
-    await delay(820);
+    const firstTower = document.querySelector('.tower');
+    if (firstTower) {
+        await waitForTransitionEnd(firstTower, 900);
+    } else {
+        await delay(820);
+    }
 
     // Logiczne odwrócenie danych
     towers = towers.map(t => [...t].reverse());

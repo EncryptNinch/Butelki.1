@@ -957,10 +957,12 @@ async function animatePour(fR, tR, col, cnt, dCnt) {
 
 // ─── GRAVITY FLIP ────────────────────────────────────────────────────────────
 async function triggerFlip() {
-    if (!localStorage.getItem('butelki_gravity_seen')) {
-        await showCoachMark();
-        localStorage.setItem('butelki_gravity_seen', '1');
-    }
+    try {
+        if (!localStorage.getItem('butelki_gravity_seen')) {
+            await showCoachMark();
+            try { localStorage.setItem('butelki_gravity_seen', '1'); } catch(e) {}
+        }
+    } catch(e) { /* Safari private browsing: skip coach mark, proceed */ }
     isAnimating = true;
     playSound('flip');
     toast('GRAVITY INVERSION!');
@@ -1201,16 +1203,21 @@ function loadSave() {
         const raw = localStorage.getItem('butelki_save');
         if (!raw) return null;
         const s = JSON.parse(raw);
-        if (s.v !== 1) { localStorage.removeItem('butelki_save'); return null; }
+        if (s.v !== 1) { try { localStorage.removeItem('butelki_save'); } catch(e) {} return null; }
         const required = ['level','towers','moves','gravityDir','gravityCounter','completedLevels','palette','bg','size'];
-        if (required.some(k => !(k in s))) { localStorage.removeItem('butelki_save'); return null; }
+        if (required.some(k => !(k in s))) { try { localStorage.removeItem('butelki_save'); } catch(e) {} return null; }
+        // Type-validate level and tower color indices
+        if (typeof s.level !== 'number' || s.level < 0 || s.level > 29) { try { localStorage.removeItem('butelki_save'); } catch(e) {} return null; }
+        if (!Array.isArray(s.towers)) { try { localStorage.removeItem('butelki_save'); } catch(e) {} return null; }
+        s.towers = s.towers.map(t => Array.isArray(t) ? t.filter(c => Number.isInteger(c) && c >= 0 && c < 20) : []);
+        s.completedLevels = Array.isArray(s.completedLevels) ? s.completedLevels.filter(l => Number.isInteger(l) && l >= 0 && l <= 29) : [];
         return s;
-    } catch(e) { localStorage.removeItem('butelki_save'); return null; }
+    } catch(e) { try { localStorage.removeItem('butelki_save'); } catch(e2) {} return null; }
 }
 
 function clearSave() {
-    localStorage.removeItem('butelki_save');
-    localStorage.removeItem('butelki_gravity_seen');
+    try { localStorage.removeItem('butelki_save'); } catch(e) {}
+    try { localStorage.removeItem('butelki_gravity_seen'); } catch(e) {}
 }
 
 function patchSave(patch) {
@@ -1227,8 +1234,13 @@ function showResumeDialog() {
     return new Promise(resolve => {
         const dlg = document.getElementById('resumeDialog');
         dlg.classList.remove('hidden');
-        document.getElementById('resumeBtn').onclick = () => { dlg.classList.add('hidden'); resolve('resume'); };
-        document.getElementById('newGameBtn').onclick = () => { dlg.classList.add('hidden'); resolve('new'); };
+        const close = (choice) => { dlg.classList.add('hidden'); resolve(choice); };
+        document.getElementById('resumeBtn').onclick = () => close('resume');
+        document.getElementById('newGameBtn').onclick = () => close('new');
+        // Escape or backdrop click → treat as "new game" so game always starts
+        const onKey = (e) => { if (e.key === 'Escape') { document.removeEventListener('keydown', onKey); close('new'); } };
+        document.addEventListener('keydown', onKey);
+        dlg.onclick = (e) => { if (e.target === dlg) { document.removeEventListener('keydown', onKey); close('new'); } };
     });
 }
 
@@ -1246,11 +1258,11 @@ function showCoachMark() {
 }
 
 // ─── AUDIO (Web Audio API, zero deps) ────────────────────────────────────────
-function playSound(type) {
+async function playSound(type) {
     if (isMuted) return;
     try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
     } catch(e) { return; }
     const ctx = audioCtx;
     const now = ctx.currentTime;

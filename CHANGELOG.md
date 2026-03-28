@@ -2,6 +2,19 @@
 
 All notable changes to Butelki are documented here.
 
+## [0.1.1.0] - 2026-03-28
+
+### Added
+- Cosmos themes (Nebula, Void, Aurora, Mars) now visible in the customizer starting from level 11 — hidden on Earth levels to avoid silent fallback.
+
+### Fixed
+- `isAnimating` flag now released in `try/finally` in `tryMove` — game could no longer lock permanently if the pour animation threw.
+- `keydown` (Escape) listener in the resume dialog is now removed in all close paths, not only the keyboard path — no listener leak.
+- `loadSave` now validates `gravityDir` (must be 0 or 1) and `gravityCounter` (integer 0–4) and clamps each tower to max capacity (`CAP`) — corrupt saves no longer produce logic errors.
+- `patchSave` now skips saves with wrong schema version instead of silently patching corrupt data.
+- AudioContext oscillator and gain nodes now disconnect on `ended` event — prevents unbounded node accumulation during long sessions.
+- All Polish UI text: resume dialog, win banner, next/back buttons, mute icon. Mute button moved from customizer to header (always visible). Undo button shows `cursor:not-allowed` when disabled.
+
 ## [0.1.0.0] - 2026-03-28
 
 ### Added

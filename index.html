@@ -208,6 +208,7 @@
 
         .btn { padding: 8px 16px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; transition: 0.15s all; font-family: 'Space Grotesk', sans-serif; font-size: .82rem; }
         .btn:active { transform: scale(.93); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; pointer-events: none; }
         .btn-primary { background: var(--accent); color: white; box-shadow: 0 4px 14px rgba(255,90,95,.35); }
         .btn-primary:hover { box-shadow: 0 6px 20px rgba(255,90,95,.5); transform: translateY(-1px); }
         .btn-ghost { background: var(--surface); color: var(--text); border: 2px solid var(--border); }
@@ -255,6 +256,7 @@
         <div class="stat-pill">Poziom: <b id="lvl-num">1</b></div>
     </div>
     <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" id="muteBtn" title="Wycisz/Włącz dźwięk">🔊</button>
         <button class="btn btn-ghost" id="undoBtn">↩</button>
         <button class="btn btn-ghost" id="lvlBtn">📋</button>
         <button class="btn btn-ghost" id="custBtn">🎨</button>
@@ -278,7 +280,6 @@
     <div class="cust-header">
         <div class="cust-title">✨ Wygląd</div>
         <div style="display:flex;gap:6px;align-items:center;">
-            <button class="mute-btn" id="muteBtn" title="Wycisz/Włącz dźwięk">🔊</button>
             <button class="btn btn-ghost" id="custClose" style="padding:6px 12px">✕</button>
         </div>
     </div>
@@ -314,7 +315,7 @@
 <!-- RESUME DIALOG -->
 <div id="resumeDialog" class="hidden">
     <div class="resume-box">
-        <div class="resume-title">Masz niezapisaną grę</div>
+        <div class="resume-title">Masz zachowaną grę</div>
         <div class="resume-sub">Chcesz kontynuować od miejsca, w którym skończyłeś?</div>
         <button class="btn btn-primary" id="resumeBtn">Wznów grę</button>
         <button class="btn btn-ghost" id="newGameBtn">Nowa gra (resetuje postęp)</button>
@@ -336,7 +337,7 @@
     <div class="lsec"><div class="lsec-label">Łatwe (1–10)</div><div class="lgrid" id="lg1"></div></div>
     <div class="lsec"><div class="lsec-label">Średnie (11–20)</div><div class="lgrid" id="lg2"></div></div>
     <div class="lsec"><div class="lsec-label">Trudne (21–30)</div><div class="lgrid" id="lg3"></div></div>
-    <button class="btn btn-primary" id="lselBackBtn" style="margin-top:8px;">BACK</button>
+    <button class="btn btn-primary" id="lselBackBtn" style="margin-top:8px;">WRÓĆ</button>
 </div>
 
 <!-- WIN BANNER -->
@@ -345,14 +346,14 @@
     <div class="win-left">
         <div class="win-icon">🎉</div>
         <div class="win-text">
-            <div class="win-title">LEVEL COMPLETE!</div>
-            <div class="win-sub">Solved in <span id="winMoves">0</span> moves</div>
+            <div class="win-title">POZIOM UKOŃCZONY!</div>
+            <div class="win-sub">Rozwiązano w <span id="winMoves">0</span> ruchach</div>
         </div>
     </div>
     <div class="win-moves" id="winMovesLarge">0</div>
     <div class="win-btns">
         <button class="btn btn-ghost" id="winRestartBtn" style="padding:10px 14px;">↺</button>
-        <button class="btn btn-primary" id="nextBtn">Next →</button>
+        <button class="btn btn-primary" id="nextBtn">Następny →</button>
     </div>
 </div>
 
@@ -1041,7 +1042,7 @@ function showWin() {
     spawnConfetti();
     const nextBtn = document.getElementById('nextBtn');
     if (currentLevel >= 29) {
-        nextBtn.textContent = '🏆 Done!';
+        nextBtn.textContent = '🏆 Koniec!';
         nextBtn.onclick = () => closeAllOverlays();
     } else {
         nextBtn.textContent = 'Następny →';

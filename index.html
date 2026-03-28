@@ -123,6 +123,8 @@
         }
         .bgsw.on { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,90,95,.2); }
         .bgsw:hover { transform: scale(1.06); }
+        .bgsw[data-cosmos] { display: none; }
+        #bgOpts.cosmos-mode .bgsw[data-cosmos] { display: block; }
         .bgsw span {
             position: absolute; bottom: 2px; left: 0; right: 0;
             text-align: center; font-size: .52rem; font-weight: 800;
@@ -292,6 +294,10 @@
             <div class="bgsw" data-bg="blue"  style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a)"><span>Błękit</span></div>
             <div class="bgsw" data-bg="green" style="background:linear-gradient(135deg,#15803d,#14532d)"><span>Zieleń</span></div>
             <div class="bgsw" data-bg="peach" style="background:linear-gradient(135deg,#c2410c,#9a3412)"><span>Brzoskw.</span></div>
+            <div class="bgsw" data-bg="nebula" data-cosmos="1" style="background:radial-gradient(circle,#4338ca,#020617)"><span>Nebula</span></div>
+            <div class="bgsw" data-bg="void"   data-cosmos="1" style="background:radial-gradient(circle,#111827,#000000)"><span>Void</span></div>
+            <div class="bgsw" data-bg="aurora" data-cosmos="1" style="background:radial-gradient(circle,#065f46,#020617)"><span>Aurora</span></div>
+            <div class="bgsw" data-bg="mars"   data-cosmos="1" style="background:radial-gradient(circle,#7c2d12,#020617)"><span>Mars</span></div>
         </div>
     </div>
 
@@ -475,7 +481,8 @@ function init(lvl) {
     }
 
     document.getElementById('gravity-bar').className = isCosmos ? 'show' : '';
-    
+    document.getElementById('bgOpts').classList.toggle('cosmos-mode', isCosmos);
+
     const [cc, et] = LEVELS[lvl] || [4, 2];
     towers = generateLevel(cc, et, lvl);
     
@@ -766,30 +773,32 @@ async function tryMove(from, to) {
     });
     isAnimating=true;
 
-    const towerEls = document.querySelectorAll('.tower');
-    const fR = towerEls[from].getBoundingClientRect();
-    const tR = towerEls[to].getBoundingClientRect();
-    const dCount = dst.length;
+    try {
+        const towerEls = document.querySelectorAll('.tower');
+        const fR = towerEls[from].getBoundingClientRect();
+        const tR = towerEls[to].getBoundingClientRect();
+        const dCount = dst.length;
 
-    const color = COLORS[topColor % COLORS.length];
+        const color = COLORS[topColor % COLORS.length];
 
-    for(let i=0;i<count;i++) src.pop();
-    render();
+        for(let i=0;i<count;i++) src.pop();
+        render();
 
-    playSound('pour');
-    await animatePour(fR, tR, color, count, dCount);
+        playSound('pour');
+        await animatePour(fR, tR, color, count, dCount);
 
-    for(let i=0;i<count;i++) dst.push(topColor);
-    moves++; selected=null;
-    saveGame();
+        for(let i=0;i<count;i++) dst.push(topColor);
+        moves++; selected=null;
+        saveGame();
 
-    if(currentLevel>=10) {
-        gravityCounter--;
-        updateGravityUI();
-        if(gravityCounter<=0) await triggerFlip();
+        if(currentLevel>=10) {
+            gravityCounter--;
+            updateGravityUI();
+            if(gravityCounter<=0) await triggerFlip();
+        }
+    } finally {
+        isAnimating=false;
     }
-
-    isAnimating=false;
     render();
     if(towers.every(t=>t.length===0||isDone(t))) showWin();
 }
@@ -1210,7 +1219,11 @@ function loadSave() {
         // Type-validate level and tower color indices
         if (typeof s.level !== 'number' || s.level < 0 || s.level > 29) { try { localStorage.removeItem('butelki_save'); } catch(e) {} return null; }
         if (!Array.isArray(s.towers)) { try { localStorage.removeItem('butelki_save'); } catch(e) {} return null; }
-        s.towers = s.towers.map(t => Array.isArray(t) ? t.filter(c => Number.isInteger(c) && c >= 0 && c < 20) : []);
+        // Validate gravityDir (must be 0 or 1) and gravityCounter (integer 0-4)
+        if (s.gravityDir !== 0 && s.gravityDir !== 1) s.gravityDir = 0;
+        if (!Number.isInteger(s.gravityCounter) || s.gravityCounter < 0 || s.gravityCounter > 4) s.gravityCounter = 4;
+        // Validate tower arrays: clamp color indices, enforce max capacity
+        s.towers = s.towers.map(t => Array.isArray(t) ? t.filter(c => Number.isInteger(c) && c >= 0 && c < 20).slice(0, CAP) : []);
         s.completedLevels = Array.isArray(s.completedLevels) ? s.completedLevels.filter(l => Number.isInteger(l) && l >= 0 && l <= 29) : [];
         return s;
     } catch(e) { try { localStorage.removeItem('butelki_save'); } catch(e2) {} return null; }
@@ -1226,6 +1239,7 @@ function patchSave(patch) {
         const raw = localStorage.getItem('butelki_save');
         if (!raw) return;
         const s = JSON.parse(raw);
+        if (s.v !== 1) return; // skip corrupt/future-version saves
         Object.assign(s, patch);
         localStorage.setItem('butelki_save', JSON.stringify(s));
     } catch(e) {}
@@ -1236,11 +1250,11 @@ function showResumeDialog() {
         const dlg = document.getElementById('resumeDialog');
         dlg.classList.remove('hidden');
         const close = (choice) => { dlg.classList.add('hidden'); resolve(choice); };
-        document.getElementById('resumeBtn').onclick = () => close('resume');
-        document.getElementById('newGameBtn').onclick = () => close('new');
-        // Escape or backdrop click → treat as "new game" so game always starts
         const onKey = (e) => { if (e.key === 'Escape') { document.removeEventListener('keydown', onKey); close('new'); } };
         document.addEventListener('keydown', onKey);
+        document.getElementById('resumeBtn').onclick = () => { document.removeEventListener('keydown', onKey); close('resume'); };
+        document.getElementById('newGameBtn').onclick = () => { document.removeEventListener('keydown', onKey); close('new'); };
+        // Backdrop click → treat as "new game" so game always starts
         dlg.onclick = (e) => { if (e.target === dlg) { document.removeEventListener('keydown', onKey); close('new'); } };
     });
 }
@@ -1274,6 +1288,7 @@ async function playSound(type) {
         osc.frequency.value = freq;
         osc.connect(gain);
         gain.connect(ctx.destination);
+        osc.addEventListener('ended', () => { try { osc.disconnect(); gain.disconnect(); } catch(e) {} });
         return { osc, gain };
     };
     if (type === 'tap') {

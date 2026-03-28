@@ -227,6 +227,23 @@
         .cfx { position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden; }
         .cp  { position: absolute; top: -20px; animation: cfal linear forwards; }
         @keyframes cfal { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+
+        /* ── RESUME DIALOG ── */
+        #resumeDialog { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); }
+        #resumeDialog.hidden { display: none; }
+        .resume-box { background: var(--surface); border: 2px solid var(--border); border-radius: 20px; padding: 28px 24px; max-width: 340px; width: 90%; text-align: center; display: flex; flex-direction: column; gap: 14px; }
+        .resume-title { font-family: 'Space Mono', monospace; font-size: 1rem; font-weight: 700; color: var(--text); }
+        .resume-sub { font-size: .8rem; color: var(--text); opacity: .55; }
+
+        /* ── COACH MARK ── */
+        #coachMark { position: fixed; inset: 0; z-index: 250; display: flex; align-items: flex-start; justify-content: center; padding-top: 110px; background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); }
+        #coachMark.hidden { display: none; }
+        .coach-box { background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 20px 22px; max-width: 300px; width: 90%; text-align: center; display: flex; flex-direction: column; gap: 12px; }
+        .coach-title { font-family: 'Space Mono', monospace; font-size: .8rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); }
+        .coach-text { font-size: .88rem; color: var(--text); line-height: 1.5; }
+
+        /* ── MUTE BTN ── */
+        .mute-btn { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 4px 6px; line-height: 1; }
     </style>
 </head>
 <body class="bg-default">
@@ -260,7 +277,10 @@
 <div id="cust">
     <div class="cust-header">
         <div class="cust-title">✨ Wygląd</div>
-        <button class="btn btn-ghost" id="custClose" style="padding:6px 12px">✕</button>
+        <div style="display:flex;gap:6px;align-items:center;">
+            <button class="mute-btn" id="muteBtn" title="Wycisz/Włącz dźwięk">🔊</button>
+            <button class="btn btn-ghost" id="custClose" style="padding:6px 12px">✕</button>
+        </div>
     </div>
 
     <div class="cust-section">
@@ -289,6 +309,25 @@
     </div>
 
     <button class="btn btn-primary" id="custDoneBtn" style="width:100%; margin-top:4px;">ZAMKNIJ</button>
+</div>
+
+<!-- RESUME DIALOG -->
+<div id="resumeDialog" class="hidden">
+    <div class="resume-box">
+        <div class="resume-title">Masz niezapisaną grę</div>
+        <div class="resume-sub">Chcesz kontynuować od miejsca, w którym skończyłeś?</div>
+        <button class="btn btn-primary" id="resumeBtn">Wznów grę</button>
+        <button class="btn btn-ghost" id="newGameBtn">Nowa gra (resetuje postęp)</button>
+    </div>
+</div>
+
+<!-- COACH MARK -->
+<div id="coachMark" class="hidden">
+    <div class="coach-box">
+        <div class="coach-title">⚡ Grawitacja</div>
+        <div class="coach-text">Co 4 ruchy grawitacja się odwraca! Dostosuj strategię.</div>
+        <button class="btn btn-primary" id="coachMarkOkBtn">Rozumiem →</button>
+    </div>
 </div>
 
 <!-- LEVEL SELECT -->
@@ -413,6 +452,9 @@ let currentPaletteName = 'normal';
 let currentBgId = 'light';
 let C = { bg:'light', size:70 };
 const completedLevels = new Set();
+let audioCtx = null;
+let isMuted = false;
+let coachMarkActive = false;
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 function init(lvl) {
@@ -679,13 +721,17 @@ function render() {
         t.appendChild(inner);
 
         const activateTower = () => {
-            if (isAnimating) return;
-            if (selected === null) { if (towers[i].length && !isDone(stack)) { selected = i; render(); } }
-            else { if (selected === i) { selected = null; render(); } else tryMove(selected, i); }
+            if (isAnimating || coachMarkActive) return;
+            if (selected === null) {
+                if (towers[i].length && !isDone(stack)) { playSound('tap'); selected = i; render(); }
+            } else {
+                if (selected === i) { selected = null; render(); }
+                else tryMove(selected, i);
+            }
         };
         t.addEventListener('click', activateTower);
         t.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if ((e.key === 'Enter' || e.key === ' ') && !coachMarkActive) {
                 e.preventDefault();
                 activateTower();
             }
@@ -694,15 +740,16 @@ function render() {
     });
     document.getElementById('moves').textContent   = moves;
     document.getElementById('lvl-num').textContent = currentLevel + 1;
+    document.getElementById('undoBtn').disabled = history.length === 0;
 }
 
 // ─── MOVE ─────────────────────────────────────────────────────────────────────
 async function tryMove(from, to) {
     const src=towers[from], dst=towers[to];
     if (!src.length) { selected=null; render(); return; }
-    if (dst.length>=CAP) { toast('Naczynie jest pełne!'); selected=null; render(); return; }
+    if (dst.length>=CAP) { playSound('invalid'); toast('Naczynie jest pełne!'); selected=null; render(); return; }
     const topColor=src[src.length-1];
-    if (dst.length && dst[dst.length-1]!==topColor) { toast('Różne kolory!'); selected=null; render(); return; }
+    if (dst.length && dst[dst.length-1]!==topColor) { playSound('invalid'); toast('Różne kolory!'); selected=null; render(); return; }
 
     let count=0;
     for(let i=src.length-1;i>=0;i--) {
@@ -728,10 +775,12 @@ async function tryMove(from, to) {
     for(let i=0;i<count;i++) src.pop();
     render();
 
+    playSound('pour');
     await animatePour(fR, tR, color, count, dCount);
 
     for(let i=0;i<count;i++) dst.push(topColor);
     moves++; selected=null;
+    saveGame();
 
     if(currentLevel>=10) {
         gravityCounter--;
@@ -908,7 +957,12 @@ async function animatePour(fR, tR, col, cnt, dCnt) {
 
 // ─── GRAVITY FLIP ────────────────────────────────────────────────────────────
 async function triggerFlip() {
+    if (!localStorage.getItem('butelki_gravity_seen')) {
+        await showCoachMark();
+        localStorage.setItem('butelki_gravity_seen', '1');
+    }
     isAnimating = true;
+    playSound('flip');
     toast('GRAVITY INVERSION!');
     gravityDir = gravityDir === 0 ? 1 : 0;
     gravityCounter = 4;
@@ -962,6 +1016,23 @@ function updateGravityUI() {
 // ─── WIN: FIX 4 ───────────────────────────────────────────────────────────────
 function showWin() {
     completedLevels.add(currentLevel);
+    playSound('win');
+    // Save next level (empty towers = generate on restore)
+    const nextLevel = currentLevel < 29 ? currentLevel + 1 : currentLevel;
+    const winSave = {
+        v: 1,
+        level: nextLevel,
+        towers: [],
+        moves: 0,
+        gravityDir: 0,
+        gravityCounter: 4,
+        completedLevels: [...completedLevels],
+        palette: currentPaletteName,
+        bg: currentBgId,
+        size: towerW,
+        muted: isMuted
+    };
+    try { localStorage.setItem('butelki_save', JSON.stringify(winSave)); } catch(e) {}
     document.getElementById('winMoves').textContent = moves;
     document.getElementById('winMovesLarge').textContent = moves;
     document.getElementById('win').classList.add('open');
@@ -1072,6 +1143,11 @@ document.getElementById('custClose').addEventListener('click',()=>{
 document.getElementById('undoBtn').addEventListener('click', undoMove);
 document.getElementById('restartBtn').addEventListener('click', () => init(currentLevel));
 document.getElementById('custDoneBtn').addEventListener('click', closeAllOverlays);
+document.getElementById('muteBtn').addEventListener('click', () => {
+    isMuted = !isMuted;
+    updateMuteIcon();
+    patchSave({ muted: isMuted });
+});
 document.getElementById('lselBackBtn').addEventListener('click', closeAllOverlays);
 document.getElementById('winRestartBtn').addEventListener('click', () => init(currentLevel));
 
@@ -1102,9 +1178,186 @@ function undoMove() {
     render();
 }
 
+// ─── SAVE / RESTORE ──────────────────────────────────────────────────────────
+function saveGame() {
+    const save = {
+        v: 1,
+        level: currentLevel,
+        towers: JSON.parse(JSON.stringify(towers)),
+        moves,
+        gravityDir,
+        gravityCounter,
+        completedLevels: [...completedLevels],
+        palette: currentPaletteName,
+        bg: currentBgId,
+        size: towerW,
+        muted: isMuted
+    };
+    try { localStorage.setItem('butelki_save', JSON.stringify(save)); } catch(e) {}
+}
+
+function loadSave() {
+    try {
+        const raw = localStorage.getItem('butelki_save');
+        if (!raw) return null;
+        const s = JSON.parse(raw);
+        if (s.v !== 1) { localStorage.removeItem('butelki_save'); return null; }
+        const required = ['level','towers','moves','gravityDir','gravityCounter','completedLevels','palette','bg','size'];
+        if (required.some(k => !(k in s))) { localStorage.removeItem('butelki_save'); return null; }
+        return s;
+    } catch(e) { localStorage.removeItem('butelki_save'); return null; }
+}
+
+function clearSave() {
+    localStorage.removeItem('butelki_save');
+    localStorage.removeItem('butelki_gravity_seen');
+}
+
+function patchSave(patch) {
+    try {
+        const raw = localStorage.getItem('butelki_save');
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        Object.assign(s, patch);
+        localStorage.setItem('butelki_save', JSON.stringify(s));
+    } catch(e) {}
+}
+
+function showResumeDialog() {
+    return new Promise(resolve => {
+        const dlg = document.getElementById('resumeDialog');
+        dlg.classList.remove('hidden');
+        document.getElementById('resumeBtn').onclick = () => { dlg.classList.add('hidden'); resolve('resume'); };
+        document.getElementById('newGameBtn').onclick = () => { dlg.classList.add('hidden'); resolve('new'); };
+    });
+}
+
+function showCoachMark() {
+    return new Promise(resolve => {
+        coachMarkActive = true;
+        const cm = document.getElementById('coachMark');
+        cm.classList.remove('hidden');
+        document.getElementById('coachMarkOkBtn').onclick = () => {
+            cm.classList.add('hidden');
+            coachMarkActive = false;
+            resolve();
+        };
+    });
+}
+
+// ─── AUDIO (Web Audio API, zero deps) ────────────────────────────────────────
+function playSound(type) {
+    if (isMuted) return;
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch(e) { return; }
+    const ctx = audioCtx;
+    const now = ctx.currentTime;
+    const makeOsc = (freq, waveType) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = waveType || 'sine';
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        return { osc, gain };
+    };
+    if (type === 'tap') {
+        const { osc, gain } = makeOsc(220);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.setTargetAtTime(0, now + 0.02, 0.02);
+        osc.start(now); osc.stop(now + 0.08);
+    } else if (type === 'invalid') {
+        const { osc, gain } = makeOsc(80, 'sawtooth');
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.setTargetAtTime(0, now + 0.05, 0.025);
+        osc.start(now); osc.stop(now + 0.12);
+    } else if (type === 'pour') {
+        const { osc, gain } = makeOsc(440);
+        osc.frequency.linearRampToValueAtTime(220, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.setTargetAtTime(0, now + 0.2, 0.05);
+        osc.start(now); osc.stop(now + 0.3);
+    } else if (type === 'flip') {
+        const { osc, gain } = makeOsc(200);
+        osc.frequency.linearRampToValueAtTime(600, now + 0.4);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.setTargetAtTime(0, now + 0.3, 0.05);
+        osc.start(now); osc.stop(now + 0.4);
+    } else if (type === 'win') {
+        [261, 329, 392].forEach(freq => {
+            const { osc, gain } = makeOsc(freq);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.setTargetAtTime(0, now + 0.4, 0.1);
+            osc.start(now); osc.stop(now + 0.6);
+        });
+    }
+}
+
+function updateMuteIcon() {
+    const btn = document.getElementById('muteBtn');
+    if (btn) btn.textContent = isMuted ? '🔇' : '🔊';
+}
+
+// ─── STARTUP ──────────────────────────────────────────────────────────────────
+async function startGame() {
+    const save = loadSave();
+    if (save) {
+        const choice = await showResumeDialog();
+        if (choice === 'resume') {
+            currentLevel = save.level;
+            towers = save.towers;
+            moves = save.moves;
+            gravityDir = save.gravityDir;
+            gravityCounter = save.gravityCounter;
+            save.completedLevels.forEach(l => completedLevels.add(l));
+            currentPaletteName = save.palette;
+            COLORS = [...(PALETTES[save.palette] || PALETTES.normal)];
+            isMuted = save.muted || false;
+            updateMuteIcon();
+            history = [];
+            selected = null;
+            isAnimating = false;
+
+            const isCosmos = currentLevel >= 10;
+            document.body.className = isCosmos ? 'cosmos' : '';
+            if (isCosmos) {
+                const cosmosId = COSMOS_THEMES.some(t => t.id === save.bg) ? save.bg : 'nebula';
+                applyCosmosTheme(cosmosId);
+            } else {
+                const earthId = BG_THEMES[save.bg] ? save.bg : 'light';
+                applyTheme(earthId);
+            }
+            if (save.size) {
+                const sizeMap = { 52: 26, 70: 35, 85: 43 };
+                setSize(save.size, sizeMap[save.size] || 35);
+                const szBtns = document.querySelectorAll('.szBtn');
+                szBtns.forEach(b => b.classList.toggle('on', +b.dataset.w === save.size));
+            }
+            document.getElementById('gravity-bar').className = isCosmos ? 'show' : '';
+            document.getElementById('gArrow').style.transform = `rotate(${gravityDir * 180}deg)`;
+            closeAllOverlays();
+            updateGravityUI();
+            const badge = document.getElementById('lbadge');
+            if (badge) badge.textContent = `Poziom ${currentLevel + 1}`;
+            // empty towers = new level was won, generate it
+            if (towers.length === 0) {
+                const [cc, et] = LEVELS[currentLevel] || [4, 2];
+                towers = generateLevel(cc, et, currentLevel);
+            }
+            render();
+            return;
+        } else {
+            clearSave();
+        }
+    }
+    applyTheme('light');
+    init(0);
+}
+
 // ─── START ────────────────────────────────────────────────────────────────────
-applyTheme('light');
-init(0);
+startGame();
 </script>
 </body>
 </html>

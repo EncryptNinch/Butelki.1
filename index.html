@@ -61,18 +61,6 @@
         .g-pip { width: 38px; height: 6px; border-radius: 3px; background: var(--border); transition: 0.4s cubic-bezier(0.4,0,0.2,1); }
         .g-pip.active { background: var(--accent); }
 
-        .lvlbadge {
-            font-family: 'Space Mono', monospace;
-            font-size: .75rem; font-weight: 900;
-            letter-spacing: 2.5px; text-transform: uppercase;
-            color: var(--text2);
-            padding: 5px 18px;
-            background: var(--surface);
-            border: 2px solid var(--border);
-            border-radius: 999px;
-            margin: 0 auto;
-        }
-
         main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; overflow: hidden; padding: 20px; }
         #grid { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 40px; padding: 20px; margin: auto; }
 
@@ -89,7 +77,6 @@
         .tower.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,90,95,.16), 0 10px 26px rgba(255,90,95,.20); }
         .tower.done     { border-color: #3FB36B; box-shadow: 0 0 0 3px rgba(63,179,107,.15), 0 10px 24px rgba(63,179,107,.14); }
         .tower.full:not(.done):not(.selected) { border-color: rgba(239,68,68,0.45); box-shadow: 0 0 0 3px rgba(239,68,68,.10); }
-        .tower.full:not(.done):not(.selected) .tower-dot.filled { background: #EF4444; }
 
         /* Wskaźnik pojemności — 4 kropki po lewej, zawsze symetryczne */
         .tower-dots {
@@ -505,10 +492,7 @@ function init(lvl) {
     document.getElementById('gArrow').style.transform = 'rotate(0deg)';
     closeAllOverlays();
     updateGravityUI();
-    
-    const badge = document.getElementById('lbadge');
-    if (badge) badge.textContent = `Poziom ${lvl + 1}`;
-    
+
     render();
 }
 
@@ -1385,8 +1369,6 @@ async function startGame() {
             document.getElementById('gArrow').style.transform = `rotate(${gravityDir * 180}deg)`;
             closeAllOverlays();
             updateGravityUI();
-            const badge = document.getElementById('lbadge');
-            if (badge) badge.textContent = `Poziom ${currentLevel + 1}`;
             // empty towers = new level was won, generate it
             if (towers.length === 0) {
                 const [cc, et] = LEVELS[currentLevel] || [4, 2];
@@ -1400,6 +1382,7 @@ async function startGame() {
     }
     applyTheme('light');
     init(0);
+    updateMuteIcon();
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlockStack – Ultimate Inversion</title>
+    <title>BlockSort</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap');
 
@@ -33,17 +33,33 @@
 
         body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); height: 100vh; margin: 0; display: flex; flex-direction: column; overflow: hidden; transition: background 0.5s ease, color 0.3s; }
 
-        header { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; background: var(--surface); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 100; flex-shrink: 0; }
-        .logo { font-family: 'Space Mono', monospace; font-weight: 900; color: var(--text); letter-spacing: -0.5px; }
+        header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 28px; background: var(--surface); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 100; flex-shrink: 0; }
+        .logo { font-family: 'Space Mono', monospace; font-weight: 900; font-size: 1.15rem; color: var(--text); letter-spacing: -0.3px; }
         .logo span { color: var(--accent); }
-        .stat-pill { background: var(--bg); border: 2px solid var(--border); padding: 4px 14px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; color: var(--text2); }
-        .stat-pill b { display: block; font-size: .95rem; font-weight: 900; color: var(--text); margin-top: 1px; }
+        .h-stats { display: flex; gap: 10px; }
+        .stat-pill { background: var(--bg); border: 1px solid var(--border); padding: 6px 16px; border-radius: 14px; font-size: .55rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--text2); display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1; min-width: 64px; }
+        .stat-pill b { font-family: 'Space Mono', monospace; font-size: 1.05rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+        .h-tools { display: flex; gap: 8px; }
+        header .btn { height: 40px; padding: 0 14px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.05rem; line-height: 1; }
+        .bico { font-size: 1.05rem; line-height: 1; }
+        .blabel { font-family: 'Space Grotesk', sans-serif; font-size: .6rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+        @media (max-width: 920px) { header { padding: 14px 16px; gap: 10px; } header .btn { padding: 0; width: 40px; } .blabel { display: none; } }
+        @media (max-width: 520px) {
+            header { padding: 10px 12px; gap: 6px; }
+            .logo { font-size: 1rem; }
+            .h-stats { gap: 6px; }
+            .stat-pill { min-width: 0; padding: 4px 10px; font-size: .5rem; }
+            .stat-pill b { font-size: .9rem; }
+            .h-tools { gap: 4px; }
+            header .btn { width: 36px; height: 36px; }
+            .bico { font-size: .95rem; }
+        }
 
         #gravity-bar { display: none; justify-content: center; align-items: center; gap: 12px; padding: 10px; background: var(--surface); border-bottom: 1px solid var(--border); }
         #gravity-bar.show { display: flex; }
         .g-pips { display: flex; gap: 6px; }
-        .g-pip { width: 45px; height: 6px; border-radius: 3px; background: var(--border); transition: 0.4s cubic-bezier(0.4,0,0.2,1); }
-        .g-pip.active { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .g-pip { width: 38px; height: 6px; border-radius: 3px; background: var(--border); transition: 0.4s cubic-bezier(0.4,0,0.2,1); }
+        .g-pip.active { background: var(--accent); }
 
         .lvlbadge {
             font-family: 'Space Mono', monospace;
@@ -67,11 +83,12 @@
             display: flex; flex-direction: row;
             padding: 10px 8px 10px 4px;
             position: relative; gap: 6px;
+            box-shadow: 0 2px 8px rgba(40,30,20,0.04);
             transition: transform 0.8s cubic-bezier(0.68,-0.55,0.27,1.55), border-color 0.3s, box-shadow 0.3s;
         }
-        .tower.selected { border-color: var(--accent); box-shadow: 0 0 25px var(--accent); }
-        .tower.done     { border-color: #22C55E; box-shadow: 0 0 15px rgba(34,197,94,0.3); }
-        .tower.full:not(.done):not(.selected) { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 12px rgba(239,68,68,0.2); }
+        .tower.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,90,95,.16), 0 10px 26px rgba(255,90,95,.20); }
+        .tower.done     { border-color: #3FB36B; box-shadow: 0 0 0 3px rgba(63,179,107,.15), 0 10px 24px rgba(63,179,107,.14); }
+        .tower.full:not(.done):not(.selected) { border-color: rgba(239,68,68,0.45); box-shadow: 0 0 0 3px rgba(239,68,68,.10); }
         .tower.full:not(.done):not(.selected) .tower-dot.filled { background: #EF4444; }
 
         /* Wskaźnik pojemności — 4 kropki po lewej, zawsze symetryczne */
@@ -86,11 +103,11 @@
         }
         .tower-dot.filled { background: var(--accent); transform: scale(1.15); }
         .tower.full:not(.done):not(.selected) .tower-dot.filled { background: #EF4444; }
-        .tower.done .tower-dot.filled { background: #22C55E; }
+        .tower.done .tower-dot.filled { background: #3FB36B; }
 
 
         .tower-inner { flex: 1; display: flex; gap: 4px; width: 100%; height: 100%; }
-        .block { width: 100%; height: var(--block-h); border-radius: 10px; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2); flex-shrink: 0; }
+        .block { width: 100%; height: var(--block-h); border-radius: 8px; box-shadow: inset 0 2px 0 rgba(255,255,255,0.14), inset 0 -3px 0 rgba(0,0,0,0.16); flex-shrink: 0; }
 
         .particle { position: fixed; pointer-events: none; width: 6px; height: 6px; z-index: 10000; animation: p-explosion 0.6s ease-out forwards; }
         @keyframes p-explosion { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; } }
@@ -211,8 +228,8 @@
         .btn { padding: 8px 16px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; transition: 0.15s all; font-family: 'Space Grotesk', sans-serif; font-size: .82rem; }
         .btn:active { transform: scale(.93); }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; pointer-events: none; }
-        .btn-primary { background: var(--accent); color: white; box-shadow: 0 4px 14px rgba(255,90,95,.35); }
-        .btn-primary:hover { box-shadow: 0 6px 20px rgba(255,90,95,.5); transform: translateY(-1px); }
+        .btn-primary { background: var(--accent); color: white; box-shadow: 0 4px 14px rgba(255,90,95,.22); }
+        .btn-primary:hover { box-shadow: 0 6px 18px rgba(255,90,95,.32); transform: translateY(-1px); }
         .btn-ghost { background: var(--surface); color: var(--text); border: 2px solid var(--border); }
         .btn-ghost:hover { background: var(--bg); border-color: #d0ccc4; }
 
@@ -222,10 +239,10 @@
             background: var(--text); color: #fff;
             border-radius: 999px; padding: 9px 22px;
             font-weight: 700; font-size: .85rem;
-            z-index: 200; transition: transform .28s cubic-bezier(.34,1.56,.64,1);
-            pointer-events: none; white-space: nowrap;
+            z-index: 200; transition: transform .28s cubic-bezier(.34,1.56,.64,1), opacity .28s ease;
+            pointer-events: none; white-space: nowrap; opacity: 0; visibility: hidden;
         }
-        .toast.on { transform: translateX(-50%) translateY(0); }
+        .toast.on { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
 
         .cfx { position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden; }
         .cp  { position: absolute; top: -20px; animation: cfal linear forwards; }
@@ -253,20 +270,18 @@
 
 <header>
     <div class="logo">Block<span>Sort</span></div>
-    <div style="display:flex; gap:12px">
-        <div class="stat-pill">Ruchy: <b id="moves">0</b></div>
-        <div class="stat-pill">Poziom: <b id="lvl-num">1</b></div>
+    <div class="h-stats">
+        <div class="stat-pill">Ruchy<b id="moves">0</b></div>
+        <div class="stat-pill">Poziom<b id="lvl-num">1</b></div>
     </div>
-    <div style="display:flex; gap:8px;">
-        <button class="btn btn-ghost" id="muteBtn" title="Wycisz/Włącz dźwięk">🔊</button>
-        <button class="btn btn-ghost" id="undoBtn">↩</button>
-        <button class="btn btn-ghost" id="lvlBtn">📋</button>
-        <button class="btn btn-ghost" id="custBtn">🎨</button>
-        <button class="btn btn-primary" id="restartBtn">↺</button>
+    <div class="h-tools">
+        <button class="btn btn-ghost" id="muteBtn" aria-label="Przełącz dźwięk" aria-pressed="false" title="Wycisz/Włącz dźwięk"><span class="bico" aria-hidden="true">🔊</span><span class="blabel">Dźwięk</span></button>
+        <button class="btn btn-ghost" id="undoBtn" aria-label="Cofnij ruch" title="Cofnij"><span class="bico" aria-hidden="true">↩</span><span class="blabel">Cofnij</span></button>
+        <button class="btn btn-ghost" id="lvlBtn" aria-label="Wybierz poziom" title="Poziomy"><span class="bico" aria-hidden="true">📋</span><span class="blabel">Poziomy</span></button>
+        <button class="btn btn-ghost" id="custBtn" aria-label="Wygląd gry" title="Wygląd"><span class="bico" aria-hidden="true">🎨</span><span class="blabel">Wygląd</span></button>
+        <button class="btn btn-primary" id="restartBtn" aria-label="Zacznij poziom od nowa" title="Od nowa"><span class="bico" aria-hidden="true">↺</span><span class="blabel">Od nowa</span></button>
     </div>
 </header>
-
-<div class="lvlbadge" id="lbadge" style="text-align:center;">Poziom 1</div>
 
 <div id="gravity-bar">
     <div id="gArrow" style="font-weight:900; font-size:1.2rem; transition:0.8s;">↓</div>
@@ -1325,7 +1340,10 @@ async function playSound(type) {
 
 function updateMuteIcon() {
     const btn = document.getElementById('muteBtn');
-    if (btn) btn.textContent = isMuted ? '🔇' : '🔊';
+    if (!btn) return;
+    const ico = btn.querySelector('.bico');
+    if (ico) ico.textContent = isMuted ? '🔇' : '🔊';
+    btn.setAttribute('aria-pressed', isMuted ? 'true' : 'false');
 }
 
 // ─── STARTUP ──────────────────────────────────────────────────────────────────

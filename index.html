@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlockSort</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap');
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
@@ -365,7 +366,7 @@
     </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 'use strict';
@@ -489,6 +490,9 @@ function init(lvl) {
     towers = generateLevel(cc, et, lvl);
     
     moves=0; gravityDir=0; gravityCounter=4; selected=null; history=[];
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    pours = [];
+    pourCtx.clearRect(0, 0, pourCv.width, pourCv.height);
     document.getElementById('gArrow').style.transform = 'rotate(0deg)';
     closeAllOverlays();
     updateGravityUI();
@@ -1063,12 +1067,15 @@ function spawnConfetti() {
     const cols=['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#F472B6'];
     for(let i=0;i<80;i++) {
         const p=document.createElement('div'); p.className='cp';
+        const dur = 1.2 + Math.random()*1.8;
+        const delay = Math.random()*.7;
         p.style.cssText=`left:${Math.random()*100}vw;background:${cols[~~(Math.random()*cols.length)]};
         width:${5+Math.random()*7}px;height:${6+Math.random()*9}px;
         border-radius:${Math.random()>.5?'50%':'3px'};
-        animation:cfal ${1.2+Math.random()*1.8}s linear ${Math.random()*.7}s forwards;
+        animation:cfal ${dur}s linear ${delay}s forwards;
         transform:rotate(${Math.random()*360}deg);`;
         c.appendChild(p);
+        setTimeout(()=>p.remove(), (dur+delay)*1000 + 50);
     }
 }
 

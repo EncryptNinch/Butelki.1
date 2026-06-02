@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlockSort</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap');
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
@@ -45,22 +44,24 @@
         .bico { font-size: 1.05rem; line-height: 1; }
         .blabel { font-family: 'Space Grotesk', sans-serif; font-size: .6rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
         @media (max-width: 920px) { header { padding: 14px 16px; gap: 10px; } header .btn { padding: 0; width: 40px; } .blabel { display: none; } }
-        @media (max-width: 520px) {
-            header { padding: 10px 12px; gap: 6px; }
-            .logo { font-size: 1rem; }
-            .h-stats { gap: 6px; }
-            .stat-pill { min-width: 0; padding: 4px 10px; font-size: .5rem; }
-            .stat-pill b { font-size: .9rem; }
-            .h-tools { gap: 4px; }
-            header .btn { width: 36px; height: 36px; }
-            .bico { font-size: .95rem; }
-        }
 
         #gravity-bar { display: none; justify-content: center; align-items: center; gap: 12px; padding: 10px; background: var(--surface); border-bottom: 1px solid var(--border); }
         #gravity-bar.show { display: flex; }
         .g-pips { display: flex; gap: 6px; }
         .g-pip { width: 38px; height: 6px; border-radius: 3px; background: var(--border); transition: 0.4s cubic-bezier(0.4,0,0.2,1); }
         .g-pip.active { background: var(--accent); }
+
+        .lvlbadge {
+            font-family: 'Space Mono', monospace;
+            font-size: .75rem; font-weight: 900;
+            letter-spacing: 2.5px; text-transform: uppercase;
+            color: var(--text2);
+            padding: 5px 18px;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 999px;
+            margin: 0 auto;
+        }
 
         main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; overflow: hidden; padding: 20px; }
         #grid { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 40px; padding: 20px; margin: auto; }
@@ -78,6 +79,7 @@
         .tower.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,90,95,.16), 0 10px 26px rgba(255,90,95,.20); }
         .tower.done     { border-color: #3FB36B; box-shadow: 0 0 0 3px rgba(63,179,107,.15), 0 10px 24px rgba(63,179,107,.14); }
         .tower.full:not(.done):not(.selected) { border-color: rgba(239,68,68,0.45); box-shadow: 0 0 0 3px rgba(239,68,68,.10); }
+        .tower.full:not(.done):not(.selected) .tower-dot.filled { background: #EF4444; }
 
         /* Wskaźnik pojemności — 4 kropki po lewej, zawsze symetryczne */
         .tower-dots {
@@ -263,11 +265,11 @@
         <div class="stat-pill">Poziom<b id="lvl-num">1</b></div>
     </div>
     <div class="h-tools">
-        <button class="btn btn-ghost" id="muteBtn" aria-label="Przełącz dźwięk" aria-pressed="false" title="Wycisz/Włącz dźwięk"><span class="bico" aria-hidden="true">🔊</span><span class="blabel">Dźwięk</span></button>
-        <button class="btn btn-ghost" id="undoBtn" aria-label="Cofnij ruch" title="Cofnij"><span class="bico" aria-hidden="true">↩</span><span class="blabel">Cofnij</span></button>
-        <button class="btn btn-ghost" id="lvlBtn" aria-label="Wybierz poziom" title="Poziomy"><span class="bico" aria-hidden="true">📋</span><span class="blabel">Poziomy</span></button>
-        <button class="btn btn-ghost" id="custBtn" aria-label="Wygląd gry" title="Wygląd"><span class="bico" aria-hidden="true">🎨</span><span class="blabel">Wygląd</span></button>
-        <button class="btn btn-primary" id="restartBtn" aria-label="Zacznij poziom od nowa" title="Od nowa"><span class="bico" aria-hidden="true">↺</span><span class="blabel">Od nowa</span></button>
+        <button class="btn btn-ghost" id="muteBtn" title="Wycisz/Włącz dźwięk"><span class="bico">🔊</span><span class="blabel">Dźwięk</span></button>
+        <button class="btn btn-ghost" id="undoBtn" title="Cofnij"><span class="bico">↩</span><span class="blabel">Cofnij</span></button>
+        <button class="btn btn-ghost" id="lvlBtn" title="Poziomy"><span class="bico">📋</span><span class="blabel">Poziomy</span></button>
+        <button class="btn btn-ghost" id="custBtn" title="Wygląd"><span class="bico">🎨</span><span class="blabel">Wygląd</span></button>
+        <button class="btn btn-primary" id="restartBtn" title="Od nowa"><span class="bico">↺</span><span class="blabel">Od nowa</span></button>
     </div>
 </header>
 
@@ -366,7 +368,7 @@
     </div>
 </div>
 
-<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+<div class="toast" id="toast"></div>
 
 <script>
 'use strict';
@@ -490,13 +492,13 @@ function init(lvl) {
     towers = generateLevel(cc, et, lvl);
     
     moves=0; gravityDir=0; gravityCounter=4; selected=null; history=[];
-    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-    pours = [];
-    pourCtx.clearRect(0, 0, pourCv.width, pourCv.height);
     document.getElementById('gArrow').style.transform = 'rotate(0deg)';
     closeAllOverlays();
     updateGravityUI();
-
+    
+    const badge = document.getElementById('lbadge');
+    if (badge) badge.textContent = `Poziom ${lvl + 1}`;
+    
     render();
 }
 
@@ -1067,15 +1069,12 @@ function spawnConfetti() {
     const cols=['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#F472B6'];
     for(let i=0;i<80;i++) {
         const p=document.createElement('div'); p.className='cp';
-        const dur = 1.2 + Math.random()*1.8;
-        const delay = Math.random()*.7;
         p.style.cssText=`left:${Math.random()*100}vw;background:${cols[~~(Math.random()*cols.length)]};
         width:${5+Math.random()*7}px;height:${6+Math.random()*9}px;
         border-radius:${Math.random()>.5?'50%':'3px'};
-        animation:cfal ${dur}s linear ${delay}s forwards;
+        animation:cfal ${1.2+Math.random()*1.8}s linear ${Math.random()*.7}s forwards;
         transform:rotate(${Math.random()*360}deg);`;
         c.appendChild(p);
-        setTimeout(()=>p.remove(), (dur+delay)*1000 + 50);
     }
 }
 
@@ -1330,11 +1329,8 @@ async function playSound(type) {
 }
 
 function updateMuteIcon() {
-    const btn = document.getElementById('muteBtn');
-    if (!btn) return;
-    const ico = btn.querySelector('.bico');
+    const ico = document.querySelector('#muteBtn .bico');
     if (ico) ico.textContent = isMuted ? '🔇' : '🔊';
-    btn.setAttribute('aria-pressed', isMuted ? 'true' : 'false');
 }
 
 // ─── STARTUP ──────────────────────────────────────────────────────────────────
@@ -1376,6 +1372,8 @@ async function startGame() {
             document.getElementById('gArrow').style.transform = `rotate(${gravityDir * 180}deg)`;
             closeAllOverlays();
             updateGravityUI();
+            const badge = document.getElementById('lbadge');
+            if (badge) badge.textContent = `Poziom ${currentLevel + 1}`;
             // empty towers = new level was won, generate it
             if (towers.length === 0) {
                 const [cc, et] = LEVELS[currentLevel] || [4, 2];
@@ -1389,7 +1387,6 @@ async function startGame() {
     }
     applyTheme('light');
     init(0);
-    updateMuteIcon();
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────
